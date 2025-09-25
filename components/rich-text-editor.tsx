@@ -3,8 +3,10 @@
 import { useRef, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import type { Entry } from "@/app/page"
-import { Star } from "lucide-react"
+import { Star, X } from "lucide-react"
 
 interface RichTextEditorProps {
     onSave: (entry: Omit<Entry, "id">) => void
@@ -24,10 +26,23 @@ export function RichTextEditor({ onSave }: RichTextEditorProps) {
     const editorRef = useRef<HTMLDivElement | null>(null)
     const [saving, setSaving] = useState(false)
     const [rating, setRating] = useState(0)
+    const [tags, setTags] = useState<string[]>([])
+    const [newTag, setNewTag] = useState("")
 
     const exec = (command: string) => {
         document.execCommand(command, false)
         editorRef.current?.focus()
+    }
+
+    const addTag = () => {
+        if (newTag.trim() && !tags.includes(newTag.trim())) {
+            setTags([...tags, newTag.trim()])
+            setNewTag("")
+        }
+    }
+
+    const removeTag = (tag: string) => {
+        setTags(tags.filter((t) => t !== tag))
     }
 
     const handleSave = () => {
@@ -47,13 +62,14 @@ export function RichTextEditor({ onSave }: RichTextEditorProps) {
                 couldImprove: "",
                 learned: "",
             },
-            tags: [],
+            tags,
             contentHtml: html,
         }
         onSave(entry)
         // clear editor
         if (editorRef.current) editorRef.current.innerHTML = ""
         setRating(0)
+        setTags([])
         setSaving(false)
     }
 
@@ -95,6 +111,41 @@ export function RichTextEditor({ onSave }: RichTextEditorProps) {
                     className="min-h-28 w-full rounded-md border border-purple-500/10 bg-background/50 px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500/30"
                     suppressContentEditableWarning
                 />
+
+                {/* Tags section */}
+                <div className="mt-3 flex items-start gap-3">
+                    <div className="flex-1">
+                        <div className="mb-2">
+                            <Input
+                                placeholder="Tags"
+                                value={newTag}
+                                onChange={(e) => setNewTag(e.target.value)}
+                                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
+                                className="w-1/4 h-8 text-sm bg-background/50 border-purple-500/10"
+                            />
+                        </div>
+                        {tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                                {tags.map((tag) => (
+                                    <Badge
+                                        key={tag}
+                                        variant="secondary"
+                                        className="flex items-center gap-1 bg-purple-500/10 text-purple-300 border-purple-500/20 text-xs px-2 py-1"
+                                    >
+                                        {tag}
+                                        <button
+                                            type="button"
+                                            onClick={() => removeTag(tag)}
+                                            className="ml-1 hover:text-destructive"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </Badge>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </CardContent>
         </Card>
     )
