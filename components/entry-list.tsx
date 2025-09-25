@@ -39,6 +39,7 @@ export function EntryList({ entries, onSave }: EntryListProps) {
     // Editor is always visible on top; no toggle needed
     const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
     const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null)
+    const [isClient, setIsClient] = useState(false)
 
     const defaultEntries: Entry[] = [
         {
@@ -70,6 +71,7 @@ export function EntryList({ entries, onSave }: EntryListProps) {
     ]
 
     useEffect(() => {
+        setIsClient(true)
         try {
             const raw = localStorage.getItem("jrnl-deleted-ids")
             if (raw) {
@@ -122,6 +124,16 @@ export function EntryList({ entries, onSave }: EntryListProps) {
         onSave(entry)
     }
 
+    const formatDateTime = (dateString: string) => {
+        if (!isClient) {
+            // Server-side fallback: show ISO date and UTC time
+            return `${dateString.split('T')[0]} at ${dateString.split('T')[1]?.slice(0, 5) || '00:00'}`
+        }
+        // Client-side: show local timezone
+        const date = new Date(dateString)
+        return `${date.toLocaleDateString()} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`
+    }
+
     const renderFullEntry = (entry: Entry) => {
         return (
             <div className="space-y-4">
@@ -137,7 +149,7 @@ export function EntryList({ entries, onSave }: EntryListProps) {
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        {entry.date.split('T')[0]}
+                        {formatDateTime(entry.date)}
                     </div>
                     {entry.rating > 0 && (
                         <div className="flex items-center gap-1">
@@ -260,7 +272,7 @@ export function EntryList({ entries, onSave }: EntryListProps) {
                                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                                 <div className="flex items-center gap-1">
                                                     <Calendar className="w-3 h-3" />
-                                                    {entry.date.split('T')[0]}
+                                                    {formatDateTime(entry.date)}
                                                 </div>
                                                 {entry.rating > 0 && (
                                                     <div className="flex items-center gap-1">
