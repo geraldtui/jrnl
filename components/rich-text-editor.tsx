@@ -22,17 +22,13 @@ function extractTitleAndExcerpt(html: string): { title: string; excerpt: string 
     return { title, excerpt }
 }
 
+
 export function RichTextEditor({ onSave }: RichTextEditorProps) {
     const editorRef = useRef<HTMLDivElement | null>(null)
     const [saving, setSaving] = useState(false)
     const [rating, setRating] = useState(0)
     const [tags, setTags] = useState<string[]>([])
     const [newTag, setNewTag] = useState("")
-
-    const exec = (command: string) => {
-        document.execCommand(command, false)
-        editorRef.current?.focus()
-    }
 
     const addTag = () => {
         if (newTag.trim() && !tags.includes(newTag.trim())) {
@@ -76,16 +72,6 @@ export function RichTextEditor({ onSave }: RichTextEditorProps) {
     return (
         <Card className="border border-purple-500/20 bg-card/50 backdrop-blur-sm">
             <CardContent className="p-3 sm:p-4">
-                <div className="flex items-center gap-1 mb-2">
-                    <Button type="button" variant="ghost" size="sm" onClick={() => exec("bold")}>B</Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => exec("italic")}>
-                        <span className="italic">I</span>
-                    </Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => exec("underline")}>
-                        <span className="underline">U</span>
-                    </Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => exec("insertUnorderedList")}>• List</Button>
-                </div>
                 <div
                     ref={editorRef}
                     contentEditable
