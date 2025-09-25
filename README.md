@@ -67,8 +67,7 @@ jrnl-app/
 ├── components/
 │   ├── entry-list.tsx           # Entries list with search/sort/filter and rich text editor
 │   ├── insights-dashboard.tsx   # Analytics and trends dashboard
-│   ├── rich-text-editor.tsx     # Minimal rich text editor for journal entries
-│   └── quick-log-form.tsx       # Legacy form (kept for compatibility)
+│   └── rich-text-editor.tsx     # Minimal rich text editor for journal entries
 ├── components/ui/           # Reusable UI components (buttons, cards, etc.)
 ├── lib/
 │   └── utils.ts            # Utility functions

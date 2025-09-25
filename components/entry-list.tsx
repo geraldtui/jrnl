@@ -34,8 +34,8 @@ interface EntryListProps {
 
 export function EntryList({ entries, onSave }: EntryListProps) {
     const [searchTerm, setSearchTerm] = useState("")
-    const [sortBy, setSortBy] = useState<"date" | "rating" | "title">("date")
     const [filterRating, setFilterRating] = useState<string>("all")
+    const [selectedTags, setSelectedTags] = useState<string[]>([])
     // Editor is always visible on top; no toggle needed
     const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
     const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null)
@@ -150,6 +150,26 @@ export function EntryList({ entries, onSave }: EntryListProps) {
         onSave(entry)
     }
 
+    const getAllTags = () => {
+        const allTags = new Set<string>()
+        sourceEntries.forEach(entry => {
+            entry.tags.forEach(tag => allTags.add(tag))
+        })
+        return Array.from(allTags).sort()
+    }
+
+    const toggleTag = (tag: string) => {
+        if (tag === "__clear__") {
+            setSelectedTags([])
+            return
+        }
+        setSelectedTags(prev =>
+            prev.includes(tag)
+                ? prev.filter(t => t !== tag)
+                : [...prev, tag]
+        )
+    }
+
     const formatDateTime = (dateString: string) => {
         if (!isClient) {
             // Server-side fallback: show ISO date and UTC time
@@ -219,25 +239,22 @@ export function EntryList({ entries, onSave }: EntryListProps) {
                 entry.participant.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 entry.context.toLowerCase().includes(searchTerm.toLowerCase())
             const matchesRating = filterRating === "all" || entry.rating.toString() === filterRating
-            return matchesSearch && matchesRating
+            const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => entry.tags.includes(tag))
+            return matchesSearch && matchesRating && matchesTags
         })
         .sort((a, b) => {
-            switch (sortBy) {
-                case "date":
-                    return new Date(b.date).getTime() - new Date(a.date).getTime()
-                case "rating":
-                    return b.rating - a.rating
-                case "title":
-                    return getEntryTitle(a).localeCompare(getEntryTitle(b))
-                default:
-                    return 0
-            }
+            // Always sort by date (newest first)
+            return new Date(b.date).getTime() - new Date(a.date).getTime()
         })
 
     // Always render editor and list; default demo entries appear when there are no saved entries
 
     return (
         <div className="space-y-6">
+            <div className="animate-in fade-in-5 slide-in-from-top-20 duration-700 ease-out">
+                <RichTextEditor onSave={handleSave} />
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -248,14 +265,27 @@ export function EntryList({ entries, onSave }: EntryListProps) {
                         className="pl-10 border-0 bg-muted/30"
                     />
                 </div>
-                <Select value={sortBy} onValueChange={(value: "date" | "rating" | "title") => setSortBy(value)}>
-                    <SelectTrigger className="w-full sm:w-32 border-0 bg-muted/30">
-                        <SelectValue />
+                <Select value="" onValueChange={toggleTag}>
+                    <SelectTrigger className="w-full sm:w-40 border-0 bg-muted/30">
+                        <SelectValue placeholder={selectedTags.length > 0 ? `${selectedTags.length} tag${selectedTags.length > 1 ? 's' : ''} selected` : "Filter by tags"} />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="date">Date</SelectItem>
-                        <SelectItem value="rating">Rating</SelectItem>
-                        <SelectItem value="title">Title</SelectItem>
+                        {getAllTags().map((tag) => (
+                            <SelectItem key={tag} value={tag}>
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-3 h-3 rounded border ${selectedTags.includes(tag) ? 'bg-purple-500 border-purple-500' : 'border-muted-foreground'}`} />
+                                    {tag}
+                                </div>
+                            </SelectItem>
+                        ))}
+                        {selectedTags.length > 0 && (
+                            <>
+                                <div className="border-t my-1" />
+                                <SelectItem value="__clear__" onSelect={() => setSelectedTags([])}>
+                                    Clear all filters
+                                </SelectItem>
+                            </>
+                        )}
                     </SelectContent>
                 </Select>
                 <Select value={filterRating} onValueChange={setFilterRating}>
@@ -274,9 +304,6 @@ export function EntryList({ entries, onSave }: EntryListProps) {
             </div>
 
             <div className="space-y-3">
-                <div className="animate-in fade-in-5 slide-in-from-top-20 duration-700 ease-out">
-                    <RichTextEditor onSave={handleSave} />
-                </div>
 
                 {filteredAndSorted.map((entry) => (
                     <Dialog key={entry.id}>
