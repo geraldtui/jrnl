@@ -44,29 +44,29 @@ export function EntryList({ entries, onSave }: EntryListProps) {
     const defaultEntries: Entry[] = [
         {
             id: "demo-1",
-            title: "My cat discovered the printer today",
+            title: "Started building a simple journaling app today",
             participant: "",
             date: "2025-01-14T00:00:00.000Z",
             context:
-                "Whiskers somehow figured out how to turn on the printer and has been fascinated by the paper coming out. She's been batting at every page for the last hour.",
-            rating: 5,
+                "Started building a simple journaling app today. I'm tired of overcomplicated apps with features I never use.",
+            rating: 4,
             reflection: { didWell: "", couldImprove: "", learned: "" },
-            tags: ["pets", "funny"],
+            tags: ["development", "minimalism"],
             contentHtml:
-                "<p>Whiskers somehow figured out how to turn on the printer and has been fascinated by the paper coming out. She's been batting at every page for the last hour.</p><p>I tried to print my tax documents and ended up with 20 pages of paw prints instead. <strong>Worth it</strong> for the entertainment value though!</p>",
+                "Started building a simple journaling app today. I'm tired of overcomplicated apps with features I never use. Just want something clean where I can write thoughts and rate my day. No fancy bells and whistles, no subscriptions, no cloud sync drama. Sometimes the best tools are the simplest ones.",
         },
         {
             id: "demo-2",
-            title: "Finally tried that weird coffee shop downtown",
+            title: "Removed another unnecessary feature from the app",
             participant: "",
             date: "2025-01-15T00:00:00.000Z",
             context:
-                "The one with the neon pink exterior that I've walked past a hundred times. Turns out they serve coffee in actual teacups and the barista knows everyone's name.",
-            rating: 4,
+                "Removed another unnecessary feature from the app. Less is definitely more when it comes to personal tools.",
+            rating: 5,
             reflection: { didWell: "", couldImprove: "", learned: "" },
-            tags: ["coffee", "local"],
+            tags: ["simplicity", "focus"],
             contentHtml:
-                "<p>The one with the neon pink exterior that I've walked past a hundred times. Turns out they serve coffee in actual teacups and the barista knows everyone's name.</p><p>Their <em>lavender oat milk latte</em> was surprisingly good, and I spent two hours there without realizing it. Sometimes the weird places are exactly what you need.</p>",
+                "Removed another unnecessary feature from the app. Less is definitely more when it comes to personal tools. Every button I remove makes the interface cleaner and the purpose clearer. The goal is to capture thoughts quickly without friction. <em>Minimalism</em> isn't about having less features, it's about having the right features.",
         },
     ]
 
@@ -94,30 +94,56 @@ export function EntryList({ entries, onSave }: EntryListProps) {
         persistDeleted(next)
     }
 
-    const getEntryExcerpt = (entry: Entry): string => {
-        const fromHtml = (html: string) => {
-            // Strip scripts/styles and tags, then decode a few common entities
-            const withoutBlocks = html
-                .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
-                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
-            const withoutTags = withoutBlocks.replace(/<[^>]+>/g, " ")
-            const decoded = withoutTags
-                .replace(/&nbsp;/g, " ")
-                .replace(/&amp;/g, "&")
-                .replace(/&lt;/g, "<")
-                .replace(/&gt;/g, ">")
-                .replace(/&quot;/g, '"')
-                .replace(/&#39;/g, "'")
-            return decoded.replace(/\s+/g, " ").trim()
+    const fromHtml = (html: string) => {
+        // Strip scripts/styles and tags, then decode a few common entities
+        const withoutBlocks = html
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+        const withoutTags = withoutBlocks.replace(/<[^>]+>/g, " ")
+        const decoded = withoutTags
+            .replace(/&nbsp;/g, " ")
+            .replace(/&amp;/g, "&")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+        return decoded.replace(/\s+/g, " ").trim()
+    }
+
+    const getEntryTitle = (entry: Entry): string => {
+        const text = entry.contentHtml ? fromHtml(entry.contentHtml) : (entry.context || "")
+        if (!text) return entry.title || "Untitled"
+
+        // Split by common sentence endings or take first reasonable chunk
+        const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 0)
+        if (sentences.length > 0) {
+            return sentences[0].slice(0, 80) || "Untitled"
         }
 
+        // Fallback: take first 80 characters
+        return text.slice(0, 80) || "Untitled"
+    }
+
+    const getEntryExcerpt = (entry: Entry): string => {
         const text = entry.contentHtml ? fromHtml(entry.contentHtml) : (entry.context || "")
         if (!text) return ""
 
-        const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text]
-        const excerpt = sentences.slice(0, 2).join(" ").trim()
-        // Cap length to avoid oversized cards
-        return excerpt.length > 280 ? `${excerpt.slice(0, 277)}…` : excerpt
+        // Split by sentences and skip the first one (which becomes the title)
+        const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 0)
+
+        if (sentences.length <= 1) {
+            // If only one sentence, show nothing in excerpt since it's used as title
+            return ""
+        }
+
+        // Join remaining sentences
+        const remainingSentences = sentences.slice(1)
+        const remainingText = remainingSentences.join('. ').trim()
+
+        // Add period if it doesn't end with punctuation
+        const finalText = remainingText && !remainingText.match(/[.!?]$/) ? remainingText + '.' : remainingText
+
+        return finalText.length > 280 ? `${finalText.slice(0, 277)}…` : finalText
     }
 
     const handleSave = (entry: Omit<Entry, "id">) => {
@@ -138,7 +164,7 @@ export function EntryList({ entries, onSave }: EntryListProps) {
         return (
             <div className="space-y-4">
                 <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-xl font-semibold">{entry.title}</h2>
+                    <h2 className="text-xl font-semibold">{getEntryTitle(entry)}</h2>
                     {entry.rating > 0 && (
                         <Badge variant="secondary" className="text-sm px-3 py-1">
                             {entry.rating}★
@@ -185,8 +211,11 @@ export function EntryList({ entries, onSave }: EntryListProps) {
     const sourceEntries = baseEntries.length === 0 ? defaultEntries : baseEntries
     const filteredAndSorted = sourceEntries
         .filter((entry) => {
+            const entryTitle = getEntryTitle(entry)
+            const entryExcerpt = getEntryExcerpt(entry)
             const matchesSearch =
-                entry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                entryTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                entryExcerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 entry.participant.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 entry.context.toLowerCase().includes(searchTerm.toLowerCase())
             const matchesRating = filterRating === "all" || entry.rating.toString() === filterRating
@@ -199,7 +228,7 @@ export function EntryList({ entries, onSave }: EntryListProps) {
                 case "rating":
                     return b.rating - a.rating
                 case "title":
-                    return a.title.localeCompare(b.title)
+                    return getEntryTitle(a).localeCompare(getEntryTitle(b))
                 default:
                     return 0
             }
@@ -257,7 +286,7 @@ export function EntryList({ entries, onSave }: EntryListProps) {
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1 space-y-2">
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <h3 className="font-medium">{entry.title}</h3>
+                                                <h3 className="font-medium">{getEntryTitle(entry)}</h3>
                                                 {entry.rating > 0 && (
                                                     <Badge variant="secondary" className="text-xs px-2 py-0 rounded-full">
                                                         {entry.rating}★
