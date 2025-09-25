@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { MessageCircle, BarChart3 } from "lucide-react"
+import { Home, BarChart3 } from "lucide-react"
 import { EntryList } from "@/components/entry-list"
 import { InsightsDashboard } from "@/components/insights-dashboard"
 
@@ -27,7 +27,7 @@ export type Conversation = Entry
 
 export default function HomePage() {
   const [entries, setEntries] = useState<Entry[]>([])
-  const [activeTab, setActiveTab] = useState<"history" | "insights">("history")
+  const [activeTab, setActiveTab] = useState<"home" | "insights">("home")
   const [showForm, setShowForm] = useState(false)
 
   useEffect(() => {
@@ -77,16 +77,16 @@ export default function HomePage() {
         <div className="flex justify-center mb-8">
           <div className="flex bg-muted/30 rounded-full p-1">
             <Button
-              variant={activeTab === "history" && !showForm ? "default" : "ghost"}
+              variant={activeTab === "home" && !showForm ? "default" : "ghost"}
               size="sm"
               onClick={() => {
-                setActiveTab("history")
+                setActiveTab("home")
                 setShowForm(false)
               }}
               className="rounded-full px-6"
             >
-              <MessageCircle className="w-4 h-4 mr-2" />
-              History
+              <Home className="w-4 h-4 mr-2" />
+              Home
             </Button>
             <Button
               variant={activeTab === "insights" ? "default" : "ghost"}
@@ -103,7 +103,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {activeTab === "history" && (
+        {activeTab === "home" && (
           <EntryList
             entries={entries}
             onSave={saveEntry}

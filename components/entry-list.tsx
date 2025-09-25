@@ -19,6 +19,13 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
 
 interface EntryListProps {
     entries: Entry[]
@@ -31,6 +38,7 @@ export function EntryList({ entries, onSave }: EntryListProps) {
     const [filterRating, setFilterRating] = useState<string>("all")
     // Editor is always visible on top; no toggle needed
     const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
+    const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null)
 
     const defaultEntries: Entry[] = [
         {
@@ -114,6 +122,53 @@ export function EntryList({ entries, onSave }: EntryListProps) {
         onSave(entry)
     }
 
+    const renderFullEntry = (entry: Entry) => {
+        return (
+            <div className="space-y-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-xl font-semibold">{entry.title}</h2>
+                    {entry.rating > 0 && (
+                        <Badge variant="secondary" className="text-sm px-3 py-1">
+                            {entry.rating}★
+                        </Badge>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        {entry.date.split('T')[0]}
+                    </div>
+                    {entry.rating > 0 && (
+                        <div className="flex items-center gap-1">
+                            {Array.from({ length: entry.rating }).map((_, i) => (
+                                <Star key={i} className="w-4 h-4 text-primary fill-current" />
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {entry.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                        {entry.tags.map((tag) => (
+                            <Badge key={tag} variant="outline" className="text-xs">
+                                {tag}
+                            </Badge>
+                        ))}
+                    </div>
+                )}
+
+                <div className="prose prose-sm max-w-none dark:prose-invert">
+                    {entry.contentHtml ? (
+                        <div dangerouslySetInnerHTML={{ __html: entry.contentHtml }} />
+                    ) : (
+                        <p className="text-muted-foreground">{entry.context || "No content available."}</p>
+                    )}
+                </div>
+            </div>
+        )
+    }
+
     const baseEntries = entries.filter((entry) => !deletedIds.has(entry.id))
     const sourceEntries = baseEntries.length === 0 ? defaultEntries : baseEntries
     const filteredAndSorted = sourceEntries
@@ -183,77 +238,84 @@ export function EntryList({ entries, onSave }: EntryListProps) {
                 </div>
 
                 {filteredAndSorted.map((entry) => (
-                    <Card
-                        key={entry.id}
-                        className="hover:bg-muted/30 border-0 shadow-sm transition-all duration-200"
-                    >
-                        <CardContent className="p-4">
-                            <div className="flex items-start justify-between">
-                                <div className="flex-1 space-y-2">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <h3 className="font-medium">{entry.title}</h3>
-                                        {entry.rating > 0 && (
-                                            <Badge variant="secondary" className="text-xs px-2 py-0 rounded-full">
-                                                {entry.rating}★
-                                            </Badge>
-                                        )}
-                                        {entry.tags.length > 0 && (
-                                            <Badge variant="outline" className="text-xs px-2 py-0 rounded-full">
-                                                {entry.tags[0]}
-                                            </Badge>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                        <div className="flex items-center gap-1">
-                                            <Calendar className="w-3 h-3" />
-                                            {entry.date.split('T')[0]}
-                                        </div>
-                                        {entry.rating > 0 && (
-                                            <div className="flex items-center gap-1">
-                                                {Array.from({ length: entry.rating }).map((_, i) => (
-                                                    <Star key={i} className="w-3 h-3 text-primary fill-current" />
-                                                ))}
+                    <Dialog key={entry.id}>
+                        <DialogTrigger asChild>
+                            <Card className="hover:bg-muted/30 hover:shadow-md hover:scale-[1.02] border-0 shadow-sm transition-all duration-200 cursor-pointer hover:border-purple-500/20 hover:shadow-purple-500/20 hover:shadow-[0_0_0_1px_rgba(168,85,247,0.3)]">
+                                <CardContent className="p-4">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1 space-y-2">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <h3 className="font-medium">{entry.title}</h3>
+                                                {entry.rating > 0 && (
+                                                    <Badge variant="secondary" className="text-xs px-2 py-0 rounded-full">
+                                                        {entry.rating}★
+                                                    </Badge>
+                                                )}
+                                                {entry.tags.length > 0 && (
+                                                    <Badge variant="outline" className="text-xs px-2 py-0 rounded-full">
+                                                        {entry.tags[0]}
+                                                    </Badge>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-                                    <p className="text-sm text-muted-foreground line-clamp-3 break-words">
-                                        {getEntryExcerpt(entry)}
-                                    </p>
-                                </div>
-                                <div className="ml-3">
-                                    {entry.id.startsWith("demo-") ? (
-                                        <div className="p-2 opacity-50" aria-hidden>
-                                            <Trash2 className="w-4 h-4" />
+                                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                                <div className="flex items-center gap-1">
+                                                    <Calendar className="w-3 h-3" />
+                                                    {entry.date.split('T')[0]}
+                                                </div>
+                                                {entry.rating > 0 && (
+                                                    <div className="flex items-center gap-1">
+                                                        {Array.from({ length: entry.rating }).map((_, i) => (
+                                                            <Star key={i} className="w-3 h-3 text-primary fill-current" />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <p className="text-sm text-muted-foreground line-clamp-3 break-words">
+                                                {getEntryExcerpt(entry)}
+                                            </p>
                                         </div>
-                                    ) : (
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <button
-                                                    type="button"
-                                                    className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                                                    aria-label="Delete entry"
-                                                >
+                                        <div className="ml-3" onClick={(e) => e.stopPropagation()}>
+                                            {entry.id.startsWith("demo-") ? (
+                                                <div className="p-2 opacity-50" aria-hidden>
                                                     <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Delete this entry?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        This hides the entry from history without altering its original content. You can't edit entries.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => deleteEntry(entry.id)}>Delete</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    )}
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                                </div>
+                                            ) : (
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <button
+                                                            type="button"
+                                                            className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                                                            aria-label="Delete entry"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Delete this entry?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                This hides the entry from history without altering its original content. You can't edit entries.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => deleteEntry(entry.id)}>Delete</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            )}
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle>Journal Entry</DialogTitle>
+                            </DialogHeader>
+                            {renderFullEntry(entry)}
+                        </DialogContent>
+                    </Dialog>
                 ))}
             </div>
         </div>
