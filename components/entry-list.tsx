@@ -99,36 +99,42 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
         const text = entry.contentHtml ? fromHtml(entry.contentHtml) : (entry.context || "")
         if (!text) return entry.title || "Untitled"
 
-        // Split by common sentence endings or take first reasonable chunk
-        const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 0)
-        if (sentences.length > 0) {
-            return sentences[0].slice(0, 80) || "Untitled"
-        }
-
-        // Fallback: take first 80 characters
-        return text.slice(0, 80) || "Untitled"
+        // Take first 15 characters as title
+        const titleLength = 15
+        return text.slice(0, titleLength).trim()
     }
 
     const getEntryExcerpt = (entry: Entry): string => {
         const text = entry.contentHtml ? fromHtml(entry.contentHtml) : (entry.context || "")
         if (!text) return ""
 
-        // Split by sentences and skip the first one (which becomes the title)
-        const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 0)
+        // For search/excerpt purposes, just return a longer snippet of the full text
+        const excerptLength = 280
+        if (text.length <= excerptLength) {
+            return text.trim()
+        }
 
-        if (sentences.length <= 1) {
-            // If only one sentence, show nothing in excerpt since it's used as title
+        const excerpt = text.slice(0, excerptLength).trim()
+        const lastSpaceIndex = excerpt.lastIndexOf(' ')
+        if (lastSpaceIndex > excerptLength * 0.8) {
+            return excerpt.slice(0, lastSpaceIndex).trim() + '…'
+        }
+
+        return excerpt + '…'
+    }
+
+    const getEntryBodyContent = (entry: Entry): string => {
+        const text = entry.contentHtml ? fromHtml(entry.contentHtml) : (entry.context || "")
+        if (!text) return ""
+
+        const titleLength = 15
+        if (text.length <= titleLength) {
+            // If text is shorter than title length, no body content
             return ""
         }
 
-        // Join remaining sentences
-        const remainingSentences = sentences.slice(1)
-        const remainingText = remainingSentences.join('. ').trim()
-
-        // Add period if it doesn't end with punctuation
-        const finalText = remainingText && !remainingText.match(/[.!?]$/) ? remainingText + '.' : remainingText
-
-        return finalText.length > 280 ? `${finalText.slice(0, 277)}…` : finalText
+        // Return the remaining content after the first 15 characters
+        return text.slice(titleLength).trim()
     }
 
     const handleSave = (entry: Omit<Entry, "id">) => {
@@ -202,11 +208,14 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
                 )}
 
                 <div className="prose prose-sm max-w-none dark:prose-invert">
-                    {entry.contentHtml ? (
-                        <div dangerouslySetInnerHTML={{ __html: entry.contentHtml }} />
-                    ) : (
-                        <p className="text-muted-foreground">{entry.context || "No content available."}</p>
-                    )}
+                    {(() => {
+                        const bodyContent = getEntryBodyContent(entry)
+                        if (bodyContent) {
+                            return <p>{bodyContent}</p>
+                        } else {
+                            return <p className="text-muted-foreground italic">Title only</p>
+                        }
+                    })()}
                 </div>
             </div>
         )
