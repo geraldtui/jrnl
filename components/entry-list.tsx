@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Star, Calendar, Search, Trash2 } from "lucide-react"
-import { RichTextEditor } from "@/components/rich-text-editor"
+import { RichTextEditor } from "@/components/simple-text-editor"
 import type { Entry } from "@/app/page"
 import {
     AlertDialog,
@@ -79,25 +79,14 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
         }
     }
 
-    const fromHtml = (html: string) => {
-        // Strip scripts/styles and tags, then decode a few common entities
-        const withoutBlocks = html
-            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
-            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
-        const withoutTags = withoutBlocks.replace(/<[^>]+>/g, " ")
-        const decoded = withoutTags
-            .replace(/&nbsp;/g, " ")
-            .replace(/&amp;/g, "&")
-            .replace(/&lt;/g, "<")
-            .replace(/&gt;/g, ">")
-            .replace(/&quot;/g, '"')
-            .replace(/&#39;/g, "'")
-        return decoded.replace(/\s+/g, " ").trim()
+    // Get the raw text content from entry (plaintext only now)
+    const getEntryText = (entry: Entry): string => {
+        return (entry.context || entry.title || "").trim()
     }
 
     const getEntryTitle = (entry: Entry): string => {
-        const text = entry.contentHtml ? fromHtml(entry.contentHtml) : (entry.context || "")
-        if (!text) return entry.title || "Untitled"
+        const text = getEntryText(entry)
+        if (!text) return "Untitled"
 
         // Take first 15 characters as title
         const titleLength = 15
@@ -105,15 +94,16 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
     }
 
     const getEntryExcerpt = (entry: Entry): string => {
-        const text = entry.contentHtml ? fromHtml(entry.contentHtml) : (entry.context || "")
+        const text = getEntryText(entry)
         if (!text) return ""
 
-        // For search/excerpt purposes, just return a longer snippet of the full text
+        // For search/excerpt purposes, return a longer snippet of the full text
         const excerptLength = 280
         if (text.length <= excerptLength) {
             return text.trim()
         }
 
+        // Find a good breaking point near the end to avoid cutting words
         const excerpt = text.slice(0, excerptLength).trim()
         const lastSpaceIndex = excerpt.lastIndexOf(' ')
         if (lastSpaceIndex > excerptLength * 0.8) {
@@ -124,7 +114,7 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
     }
 
     const getEntryBodyContent = (entry: Entry): string => {
-        const text = entry.contentHtml ? fromHtml(entry.contentHtml) : (entry.context || "")
+        const text = getEntryText(entry)
         if (!text) return ""
 
         const titleLength = 15
@@ -133,20 +123,29 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
             return ""
         }
 
-        // Return the remaining content after the first 15 characters
-        return text.slice(titleLength).trim()
+        // Return the remaining content after the first 15 characters, preserving line breaks
+        const bodyText = text.slice(titleLength).trim()
+
+        // Convert line breaks to proper display format
+        return bodyText.replace(/\n/g, '\n')
     }
 
     const handleSave = (entry: Omit<Entry, "id">) => {
         onSave(entry)
     }
 
+    // Memoized tag collection for better performance
     const getAllTags = () => {
-        const allTags = new Set<string>()
+        const tagCounts = new Map<string, number>()
         baseEntries.forEach(entry => {
-            entry.tags.forEach(tag => allTags.add(tag))
+            entry.tags.forEach(tag => {
+                tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1)
+            })
         })
-        return Array.from(allTags).sort()
+        // Return tags sorted alphabetically with their usage counts
+        return Array.from(tagCounts.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([tag]) => tag)
     }
 
     const toggleTag = (tag: string) => {
@@ -164,11 +163,38 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
     const formatDateTime = (dateString: string) => {
         if (!isClient) {
             // Server-side fallback: show ISO date and UTC time
-            return `${dateString.split('T')[0]} at ${dateString.split('T')[1]?.slice(0, 5) || '00:00'}`
+            const datePart = dateString.split('T')[0]
+            const timePart = dateString.split('T')[1]?.slice(0, 5) || '00:00'
+            return `${datePart} at ${timePart}`
         }
-        // Client-side: show local timezone
-        const date = new Date(dateString)
-        return `${date.toLocaleDateString()} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`
+
+        // Client-side: show local timezone with better formatting
+        try {
+            const date = new Date(dateString)
+            const today = new Date()
+            const yesterday = new Date(today)
+            yesterday.setDate(yesterday.getDate() - 1)
+
+            // Check if it's today or yesterday for friendlier display
+            const dateStr = date.toLocaleDateString()
+            const todayStr = today.toLocaleDateString()
+            const yesterdayStr = yesterday.toLocaleDateString()
+
+            let displayDate: string
+            if (dateStr === todayStr) {
+                displayDate = 'Today'
+            } else if (dateStr === yesterdayStr) {
+                displayDate = 'Yesterday'
+            } else {
+                displayDate = date.toLocaleDateString()
+            }
+
+            const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+            return `${displayDate} at ${timeStr}`
+        } catch {
+            // Fallback if date parsing fails
+            return dateString
+        }
     }
 
     const renderFullEntry = (entry: Entry) => {
@@ -209,11 +235,21 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
 
                 <div className="prose prose-sm max-w-none dark:prose-invert">
                     {(() => {
-                        const bodyContent = getEntryBodyContent(entry)
-                        if (bodyContent) {
-                            return <p>{bodyContent}</p>
+                        const fullText = getEntryText(entry)
+                        if (fullText) {
+                            // Split by lines and render with proper line breaks
+                            const lines = fullText.split('\n').filter(line => line.trim())
+                            return (
+                                <div className="space-y-3">
+                                    {lines.map((line, index) => (
+                                        <p key={index} className="leading-relaxed">
+                                            {line.trim()}
+                                        </p>
+                                    ))}
+                                </div>
+                            )
                         } else {
-                            return <p className="text-muted-foreground italic">Title only</p>
+                            return <p className="text-muted-foreground italic">No content</p>
                         }
                     })()}
                 </div>
@@ -221,29 +257,40 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
         )
     }
 
+    // Optimized search function
+    const matchesSearchTerm = (entry: Entry, searchTerm: string): boolean => {
+        if (!searchTerm.trim()) return true
+
+        const term = searchTerm.toLowerCase()
+        const entryText = getEntryText(entry).toLowerCase()
+        const participant = entry.participant.toLowerCase()
+
+        // Check if search term matches in main content or participant
+        return entryText.includes(term) || participant.includes(term)
+    }
+
+    // Optimized filtering and sorting
+    const getFilteredEntries = () => {
+        return baseEntries
+            .filter((entry) => {
+                const matchesSearch = matchesSearchTerm(entry, searchTerm)
+                const matchesRating = filterRating === "all" || entry.rating.toString() === filterRating
+                const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => entry.tags.includes(tag))
+                return matchesSearch && matchesRating && matchesTags
+            })
+            .sort((a, b) => {
+                // Always sort by date (newest first)
+                return new Date(b.date).getTime() - new Date(a.date).getTime()
+            })
+    }
+
     const baseEntries = entries.filter((entry) => !deletedIds.has(entry.id))
-    const filteredAndSorted = baseEntries
-        .filter((entry) => {
-            const entryTitle = getEntryTitle(entry)
-            const entryExcerpt = getEntryExcerpt(entry)
-            const matchesSearch =
-                entryTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                entryExcerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                entry.participant.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                entry.context.toLowerCase().includes(searchTerm.toLowerCase())
-            const matchesRating = filterRating === "all" || entry.rating.toString() === filterRating
-            const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => entry.tags.includes(tag))
-            return matchesSearch && matchesRating && matchesTags
-        })
-        .sort((a, b) => {
-            // Always sort by date (newest first)
-            return new Date(b.date).getTime() - new Date(a.date).getTime()
-        })
+    const filteredAndSorted = getFilteredEntries()
 
     return (
         <div className="space-y-6">
             <div className="animate-in fade-in-5 slide-in-from-top-20 duration-700 ease-out">
-                <RichTextEditor onSave={handleSave} />
+                <RichTextEditor onSave={handleSave} existingTags={getAllTags()} />
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
