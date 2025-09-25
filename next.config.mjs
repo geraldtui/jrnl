@@ -3,6 +3,8 @@ const nextConfig = {
   output: 'export',
   trailingSlash: true,
   distDir: 'dist',
+  basePath: '/jrnl',
+  assetPrefix: '/jrnl',
   eslint: {
     ignoreDuringBuilds: true,
   },
