@@ -1,0 +1,261 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Star, Calendar, Search, Trash2 } from "lucide-react"
+import { RichTextEditor } from "@/components/rich-text-editor"
+import type { Entry } from "@/app/page"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
+interface ConversationListProps {
+  entries: Entry[]
+  onSave: (entry: Omit<Entry, "id">) => void
+}
+
+export function ConversationList({ entries, onSave }: ConversationListProps) {
+  const [searchTerm, setSearchTerm] = useState("")
+  const [sortBy, setSortBy] = useState<"date" | "rating" | "title">("date")
+  const [filterRating, setFilterRating] = useState<string>("all")
+  // Editor is always visible on top; no toggle needed
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
+
+  const defaultEntries: Entry[] = [
+    {
+      id: "demo-1",
+      title: "My cat discovered the printer today",
+      participant: "",
+      date: "2025-01-14T00:00:00.000Z",
+      context:
+        "Whiskers somehow figured out how to turn on the printer and has been fascinated by the paper coming out. She's been batting at every page for the last hour.",
+      rating: 5,
+      reflection: { didWell: "", couldImprove: "", learned: "" },
+      tags: ["pets", "funny"],
+      contentHtml:
+        "<p>Whiskers somehow figured out how to turn on the printer and has been fascinated by the paper coming out. She's been batting at every page for the last hour.</p><p>I tried to print my tax documents and ended up with 20 pages of paw prints instead. <strong>Worth it</strong> for the entertainment value though!</p>",
+    },
+    {
+      id: "demo-2",
+      title: "Finally tried that weird coffee shop downtown",
+      participant: "",
+      date: "2025-01-15T00:00:00.000Z",
+      context:
+        "The one with the neon pink exterior that I've walked past a hundred times. Turns out they serve coffee in actual teacups and the barista knows everyone's name.",
+      rating: 4,
+      reflection: { didWell: "", couldImprove: "", learned: "" },
+      tags: ["coffee", "local"],
+      contentHtml:
+        "<p>The one with the neon pink exterior that I've walked past a hundred times. Turns out they serve coffee in actual teacups and the barista knows everyone's name.</p><p>Their <em>lavender oat milk latte</em> was surprisingly good, and I spent two hours there without realizing it. Sometimes the weird places are exactly what you need.</p>",
+    },
+  ]
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("jrnl-deleted-ids")
+      if (raw) {
+        const arr = JSON.parse(raw) as string[]
+        setDeletedIds(new Set(arr))
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const persistDeleted = (ids: Set<string>) => {
+    localStorage.setItem("jrnl-deleted-ids", JSON.stringify(Array.from(ids)))
+  }
+
+  const deleteEntry = (id: string) => {
+    const next = new Set(deletedIds)
+    next.add(id)
+    setDeletedIds(next)
+    persistDeleted(next)
+  }
+
+  const getEntryExcerpt = (entry: Entry): string => {
+    const fromHtml = (html: string) => {
+      // Strip scripts/styles and tags, then decode a few common entities
+      const withoutBlocks = html
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+      const withoutTags = withoutBlocks.replace(/<[^>]+>/g, " ")
+      const decoded = withoutTags
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+      return decoded.replace(/\s+/g, " ").trim()
+    }
+
+    const text = entry.contentHtml ? fromHtml(entry.contentHtml) : (entry.context || "")
+    if (!text) return ""
+
+    const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text]
+    const excerpt = sentences.slice(0, 2).join(" ").trim()
+    // Cap length to avoid oversized cards
+    return excerpt.length > 280 ? `${excerpt.slice(0, 277)}…` : excerpt
+  }
+
+  const baseEntries = entries.filter((conv) => !deletedIds.has(conv.id))
+  const sourceEntries = baseEntries.length === 0 ? defaultEntries : baseEntries
+  const filteredAndSorted = sourceEntries
+    .filter((conv) => {
+      const matchesSearch =
+        conv.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        conv.participant.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        conv.context.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesRating = filterRating === "all" || conv.rating.toString() === filterRating
+      return matchesSearch && matchesRating
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "date":
+          return new Date(b.date).getTime() - new Date(a.date).getTime()
+        case "rating":
+          return b.rating - a.rating
+        case "title":
+          return a.title.localeCompare(b.title)
+        default:
+          return 0
+      }
+    })
+
+  const handleSave = (entry: Omit<Entry, "id">) => {
+    onSave(entry)
+  }
+
+  // Always render editor and list; default demo entries appear when there are no saved entries
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <Input
+            placeholder="Search entries..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 border-0 bg-muted/30"
+          />
+        </div>
+        <Select value={sortBy} onValueChange={(value: "date" | "rating" | "title") => setSortBy(value)}>
+          <SelectTrigger className="w-full sm:w-32 border-0 bg-muted/30">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="date">Date</SelectItem>
+            <SelectItem value="rating">Rating</SelectItem>
+            <SelectItem value="title">Title</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterRating} onValueChange={setFilterRating}>
+          <SelectTrigger className="w-full sm:w-32 border-0 bg-muted/30">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="5">5★</SelectItem>
+            <SelectItem value="4">4★</SelectItem>
+            <SelectItem value="3">3★</SelectItem>
+            <SelectItem value="2">2★</SelectItem>
+            <SelectItem value="1">1★</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-3">
+        <div className="animate-in fade-in-5 slide-in-from-top-20 duration-700 ease-out">
+          <RichTextEditor onSave={handleSave} />
+        </div>
+
+        {filteredAndSorted.map((conversation) => (
+          <Card
+            key={conversation.id}
+            className="hover:bg-muted/30 border-0 shadow-sm transition-all duration-200"
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-medium">{conversation.title}</h3>
+                    {conversation.rating > 0 && (
+                      <Badge variant="secondary" className="text-xs px-2 py-0 rounded-full">
+                        {conversation.rating}★
+                      </Badge>
+                    )}
+                    {conversation.tags.length > 0 && (
+                      <Badge variant="outline" className="text-xs px-2 py-0 rounded-full">
+                        {conversation.tags[0]}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {conversation.date.split('T')[0]}
+                    </div>
+                    {conversation.rating > 0 && (
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: conversation.rating }).map((_, i) => (
+                          <Star key={i} className="w-3 h-3 text-primary fill-current" />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground line-clamp-3 break-words">
+                    {getEntryExcerpt(conversation)}
+                  </p>
+                </div>
+                <div className="ml-3">
+                  {conversation.id.startsWith("demo-") ? (
+                    <div className="p-2 opacity-50" aria-hidden>
+                      <Trash2 className="w-4 h-4" />
+                    </div>
+                  ) : (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button
+                          type="button"
+                          className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                          aria-label="Delete entry"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete this entry?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This hides the entry from history without altering its original content. You can’t edit entries.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteEntry(conversation.id)}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  )
+}
