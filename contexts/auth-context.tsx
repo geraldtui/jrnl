@@ -107,15 +107,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check for stored session
     const storedUser = localStorage.getItem('jrnl-user')
     const storedToken = localStorage.getItem('jrnl-token')
+    const storedExpiration = localStorage.getItem('jrnl-token-expires')
 
-    if (storedUser && storedToken) {
+    // Check if token is still valid
+    const isTokenValid = storedExpiration && Date.now() < parseInt(storedExpiration)
+
+    if (storedUser && storedToken && isTokenValid) {
       setUser(JSON.parse(storedUser))
       setAccessToken(storedToken)
       setDriveService(new GoogleDriveService(storedToken))
+    } else if (storedUser || storedToken) {
+      // Clear expired or invalid session
+      localStorage.removeItem('jrnl-user')
+      localStorage.removeItem('jrnl-token')
+      localStorage.removeItem('jrnl-token-expires')
     }
 
     setLoading(false) // Set loading to false since we're not using popup flow anymore
   }, [])
+
+  // Periodic token validation
+  useEffect(() => {
+    if (!user || !accessToken) return
+
+    const checkTokenExpiration = () => {
+      const storedExpiration = localStorage.getItem('jrnl-token-expires')
+      if (!storedExpiration || Date.now() >= parseInt(storedExpiration)) {
+        // Token has expired, sign out user
+        handleSignOut()
+      }
+    }
+
+    // Check every 5 minutes
+    const interval = setInterval(checkTokenExpiration, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [user, accessToken])
 
   const handleSignIn = () => {
     if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
@@ -173,6 +199,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         localStorage.setItem('jrnl-user', JSON.stringify(user))
         localStorage.setItem('jrnl-token', response.access_token)
+
+        // Store token expiration time (Google tokens typically expire in 1 hour)
+        const expirationTime = Date.now() + (55 * 60 * 1000) // 55 minutes to be safe
+        localStorage.setItem('jrnl-token-expires', expirationTime.toString())
       } else {
         throw new Error('No access token received')
       }
@@ -188,6 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setDriveService(null)
     localStorage.removeItem('jrnl-user')
     localStorage.removeItem('jrnl-token')
+    localStorage.removeItem('jrnl-token-expires')
 
     // Clear Google's session
     if (window.google?.accounts?.id) {
