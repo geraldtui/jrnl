@@ -1,10 +1,11 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import type { Entry } from "@/app/page"
 import { Star, X } from "lucide-react"
 
@@ -29,6 +30,7 @@ export function RichTextEditor({ onSave }: RichTextEditorProps) {
     const [rating, setRating] = useState(0)
     const [tags, setTags] = useState<string[]>([])
     const [newTag, setNewTag] = useState("")
+    const [hasContent, setHasContent] = useState(false)
 
     const addTag = () => {
         if (newTag.trim() && !tags.includes(newTag.trim())) {
@@ -40,6 +42,58 @@ export function RichTextEditor({ onSave }: RichTextEditorProps) {
     const removeTag = (tag: string) => {
         setTags(tags.filter((t) => t !== tag))
     }
+
+    const handleEditorInput = () => {
+        if (editorRef.current) {
+            const text = editorRef.current.innerText.trim()
+            setHasContent(text.length > 0)
+        }
+    }
+
+    useEffect(() => {
+        // Auto-focus the editor when component mounts
+        if (editorRef.current) {
+            editorRef.current.focus()
+            // Check initial content
+            handleEditorInput()
+        }
+
+        // Keep cursor always blinking in the text editor
+        const handleBlur = (e: FocusEvent) => {
+            const relatedTarget = e.relatedTarget as HTMLElement
+
+            // Only allow focus to leave if user is interacting with input fields
+            if (relatedTarget && (
+                relatedTarget.tagName === 'INPUT' ||
+                relatedTarget.tagName === 'TEXTAREA' ||
+                relatedTarget.contentEditable === 'true'
+            )) {
+                return // Allow focus to move to other text inputs
+            }
+
+            // For everything else (buttons, dropdowns, page clicks), maintain editor focus
+            setTimeout(() => {
+                if (editorRef.current) {
+                    const selection = window.getSelection()
+                    const range = selection?.rangeCount ? selection.getRangeAt(0) : null
+
+                    editorRef.current.focus()
+
+                    // Restore cursor position
+                    if (range && selection) {
+                        selection.removeAllRanges()
+                        selection.addRange(range)
+                    }
+                }
+            }, 10)
+        }
+
+        const editor = editorRef.current
+        if (editor) {
+            editor.addEventListener('blur', handleBlur)
+            return () => editor.removeEventListener('blur', handleBlur)
+        }
+    }, [])
 
     const handleSave = () => {
         const html = editorRef.current?.innerHTML?.trim() || ""
@@ -64,20 +118,24 @@ export function RichTextEditor({ onSave }: RichTextEditorProps) {
         onSave(entry)
         // clear editor
         if (editorRef.current) editorRef.current.innerHTML = ""
+        setHasContent(false)
         setRating(0)
         setTags([])
         setSaving(false)
     }
 
     return (
-        <Card className="border border-purple-500/20 bg-card/50 backdrop-blur-sm">
-            <CardContent className="p-3 sm:p-4">
+        <Card className="border-0 bg-card/50 backdrop-blur-sm" data-editor-container>
+            <CardContent className="px-0 sm:px-4 py-0">
                 <div
                     ref={editorRef}
                     contentEditable
                     role="textbox"
                     aria-label="Journal editor"
-                    className="min-h-28 w-full rounded-md border border-purple-500/10 bg-background/50 px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500/30"
+                    className="min-h-28 w-full rounded-md border-0 bg-background/50 px-3 py-2 outline-none focus:outline-none relative before:content-[attr(data-placeholder)] before:absolute before:text-muted-foreground before:pointer-events-none empty:before:block before:hidden"
+                    style={{ caretColor: 'auto' }}
+                    onInput={handleEditorInput}
+                    data-placeholder="Dear Jrnl,"
                     suppressContentEditableWarning
                 />
 
@@ -130,9 +188,27 @@ export function RichTextEditor({ onSave }: RichTextEditorProps) {
                                 </button>
                             ))}
                         </div>
-                        <Button type="button" size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={handleSave} disabled={saving}>
-                            {saving ? "Saving..." : "Add Entry"}
-                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button type="button" size="sm" className="bg-purple-600 hover:bg-purple-700" disabled={saving || !hasContent}>
+                                    {saving ? "Saving..." : "Jrnl"}
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Save Journal Entry?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Once saved, this entry cannot be edited or changed. Journal entries are immutable to preserve the authenticity of your thoughts and experiences at this moment in time.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleSave} className="bg-purple-600 hover:bg-purple-700">
+                                        Save Entry
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 </div>
             </CardContent>
