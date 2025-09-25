@@ -2,22 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Home, BarChart3, LogOut, RefreshCw, Trash2 } from "lucide-react"
+import { Home, BarChart3, RefreshCw } from "lucide-react"
 import { EntryList } from "@/components/entry-list"
 import { InsightsDashboard } from "@/components/insights-dashboard"
+import { UserSidebar } from "@/components/user-sidebar"
 import { useAuth } from "@/contexts/auth-context"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger
-} from "@/components/ui/alert-dialog"
 
 export interface Entry {
   id: string
@@ -188,6 +178,13 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* User Sidebar */}
+      <UserSidebar
+        onRefresh={refreshData}
+        onDeleteAllData={handleDeleteAllData}
+        isLoading={isLoading}
+      />
+
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
@@ -195,48 +192,6 @@ export default function HomePage() {
               jrnl
             </h1>
           </div>
-          {user && (
-            <div className="flex items-center justify-center gap-4 mt-4">
-              <span className="text-sm text-muted-foreground">
-                Signed in as {user.name}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={refreshData}
-                disabled={isLoading}
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete All Data
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete all journal data?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete all your journal entries from Google Drive. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteAllData}>
-                      Delete All Data
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <Button variant="outline" size="sm" onClick={signOut}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
-          )}
         </div>
 
         {error && (
