@@ -30,9 +30,11 @@ import {
 interface EntryListProps {
     entries: Entry[]
     onSave: (entry: Omit<Entry, "id">) => void
+    onDelete?: (entryId: string) => Promise<void>
+    isLoading?: boolean
 }
 
-export function EntryList({ entries, onSave }: EntryListProps) {
+export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListProps) {
     const [searchTerm, setSearchTerm] = useState("")
     const [filterRating, setFilterRating] = useState<string>("all")
     const [selectedTags, setSelectedTags] = useState<string[]>([])
@@ -41,37 +43,14 @@ export function EntryList({ entries, onSave }: EntryListProps) {
     const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null)
     const [isClient, setIsClient] = useState(false)
 
-    const defaultEntries: Entry[] = [
-        {
-            id: "demo-1",
-            title: "Started building a simple journaling app today",
-            participant: "",
-            date: "2025-01-14T00:00:00.000Z",
-            context:
-                "Started building a simple journaling app today. I'm tired of overcomplicated apps with features I never use.",
-            rating: 4,
-            reflection: { didWell: "", couldImprove: "", learned: "" },
-            tags: ["development", "minimalism"],
-            contentHtml:
-                "Started building a simple journaling app today. I'm tired of overcomplicated apps with features I never use. Just want something clean where I can write thoughts and rate my day. No fancy bells and whistles, no subscriptions, no cloud sync drama. Sometimes the best tools are the simplest ones.",
-        },
-        {
-            id: "demo-2",
-            title: "Removed another unnecessary feature from the app",
-            participant: "",
-            date: "2025-01-15T00:00:00.000Z",
-            context:
-                "Removed another unnecessary feature from the app. Less is definitely more when it comes to personal tools.",
-            rating: 5,
-            reflection: { didWell: "", couldImprove: "", learned: "" },
-            tags: ["simplicity", "focus"],
-            contentHtml:
-                "Removed another unnecessary feature from the app. Less is definitely more when it comes to personal tools. Every button I remove makes the interface cleaner and the purpose clearer. The goal is to capture thoughts quickly without friction. <em>Minimalism</em> isn't about having less features, it's about having the right features.",
-        },
-    ]
-
     useEffect(() => {
         setIsClient(true)
+        // If we have a proper onDelete function, don't load local deleted IDs
+        if (onDelete) {
+            return
+        }
+
+        // Legacy support for local deletion (fallback)
         try {
             const raw = localStorage.getItem("jrnl-deleted-ids")
             if (raw) {
@@ -81,17 +60,23 @@ export function EntryList({ entries, onSave }: EntryListProps) {
         } catch {
             // ignore
         }
-    }, [])
+    }, [onDelete])
 
     const persistDeleted = (ids: Set<string>) => {
         localStorage.setItem("jrnl-deleted-ids", JSON.stringify(Array.from(ids)))
     }
 
-    const deleteEntry = (id: string) => {
-        const next = new Set(deletedIds)
-        next.add(id)
-        setDeletedIds(next)
-        persistDeleted(next)
+    const handleDeleteEntry = async (id: string) => {
+        if (onDelete) {
+            // Use proper delete function that syncs with Google Drive
+            await onDelete(id)
+        } else {
+            // Fallback to local deletion (legacy)
+            const next = new Set(deletedIds)
+            next.add(id)
+            setDeletedIds(next)
+            persistDeleted(next)
+        }
     }
 
     const fromHtml = (html: string) => {
@@ -152,7 +137,7 @@ export function EntryList({ entries, onSave }: EntryListProps) {
 
     const getAllTags = () => {
         const allTags = new Set<string>()
-        sourceEntries.forEach(entry => {
+        baseEntries.forEach(entry => {
             entry.tags.forEach(tag => allTags.add(tag))
         })
         return Array.from(allTags).sort()
@@ -228,8 +213,7 @@ export function EntryList({ entries, onSave }: EntryListProps) {
     }
 
     const baseEntries = entries.filter((entry) => !deletedIds.has(entry.id))
-    const sourceEntries = baseEntries.length === 0 ? defaultEntries : baseEntries
-    const filteredAndSorted = sourceEntries
+    const filteredAndSorted = baseEntries
         .filter((entry) => {
             const entryTitle = getEntryTitle(entry)
             const entryExcerpt = getEntryExcerpt(entry)
@@ -246,8 +230,6 @@ export function EntryList({ entries, onSave }: EntryListProps) {
             // Always sort by date (newest first)
             return new Date(b.date).getTime() - new Date(a.date).getTime()
         })
-
-    // Always render editor and list; default demo entries appear when there are no saved entries
 
     return (
         <div className="space-y-6">
@@ -304,8 +286,17 @@ export function EntryList({ entries, onSave }: EntryListProps) {
             </div>
 
             <div className="space-y-3">
-
-                {filteredAndSorted.map((entry) => (
+                {filteredAndSorted.length === 0 ? (
+                    <Card className="p-8">
+                        <CardContent className="text-center">
+                            <p className="text-muted-foreground mb-2">No entries yet</p>
+                            <p className="text-sm text-muted-foreground">
+                                Start by creating your first journal entry above
+                            </p>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    filteredAndSorted.map((entry) => (
                     <Dialog key={entry.id}>
                         <DialogTrigger asChild>
                             <Card className="hover:bg-muted/30 hover:shadow-md hover:scale-[1.02] border-0 shadow-sm transition-all duration-200 cursor-pointer hover:border-purple-500/20 hover:shadow-purple-500/20 hover:shadow-[0_0_0_1px_rgba(168,85,247,0.3)]">
@@ -343,17 +334,12 @@ export function EntryList({ entries, onSave }: EntryListProps) {
                                             </p>
                                         </div>
                                         <div className="ml-3" onClick={(e) => e.stopPropagation()}>
-                                            {entry.id.startsWith("demo-") ? (
-                                                <div className="p-2 opacity-50" aria-hidden>
-                                                    <Trash2 className="w-4 h-4" />
-                                                </div>
-                                            ) : (
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <button
-                                                            type="button"
-                                                            className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                                                            aria-label="Delete entry"
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <button
+                                                        type="button"
+                                                        className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                                                        aria-label="Delete entry"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>
@@ -367,11 +353,10 @@ export function EntryList({ entries, onSave }: EntryListProps) {
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => deleteEntry(entry.id)}>Delete</AlertDialogAction>
+                                                            <AlertDialogAction onClick={() => handleDeleteEntry(entry.id)}>Delete</AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>
                                                 </AlertDialog>
-                                            )}
                                         </div>
                                     </div>
                                 </CardContent>
@@ -384,7 +369,8 @@ export function EntryList({ entries, onSave }: EntryListProps) {
                             {renderFullEntry(entry)}
                         </DialogContent>
                     </Dialog>
-                ))}
+                    ))
+                )}
             </div>
         </div>
     )

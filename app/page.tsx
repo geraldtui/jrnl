@@ -75,6 +75,17 @@ export default function HomePage() {
     loadEntriesFromDrive()
   }, [isAuthenticated, loadEntries, saveEntries])
 
+  // Auto-refresh data every 5 minutes when on insights tab (to catch changes from other devices)
+  useEffect(() => {
+    if (!isAuthenticated || activeTab !== 'insights') return
+
+    const interval = setInterval(() => {
+      refreshData()
+    }, 5 * 60 * 1000) // 5 minutes
+
+    return () => clearInterval(interval)
+  }, [isAuthenticated, activeTab])
+
   const saveEntry = async (entry: Omit<Entry, "id">) => {
     const newEntry: Entry = {
       ...entry,
@@ -122,6 +133,31 @@ export default function HomePage() {
     } catch (err) {
       console.error('Error refreshing data:', err)
       setError(err instanceof Error ? err.message : 'Failed to refresh data')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const deleteEntry = async (entryId: string) => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      // Remove entry from local state
+      const updatedEntries = entries.filter(entry => entry.id !== entryId)
+      setEntries(updatedEntries)
+
+      // Save updated entries to Google Drive
+      await saveEntries(updatedEntries)
+
+      // Clear any local deleted IDs since we're now properly syncing
+      localStorage.removeItem("jrnl-deleted-ids")
+
+    } catch (err) {
+      console.error('Error deleting entry:', err)
+      setError(err instanceof Error ? err.message : 'Failed to delete entry')
+      // Refresh data to restore state in case of error
+      refreshData()
     } finally {
       setIsLoading(false)
     }
@@ -233,6 +269,8 @@ export default function HomePage() {
           <EntryList
             entries={entries}
             onSave={saveEntry}
+            onDelete={deleteEntry}
+            isLoading={isLoading}
           />
         )}
 
