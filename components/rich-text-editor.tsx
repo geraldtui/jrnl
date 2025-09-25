@@ -85,23 +85,6 @@ export function RichTextEditor({ onSave }: RichTextEditorProps) {
                         <span className="underline">U</span>
                     </Button>
                     <Button type="button" variant="ghost" size="sm" onClick={() => exec("insertUnorderedList")}>• List</Button>
-                    <div className="flex-1" />
-                    <div className="flex items-center gap-1 mr-2" aria-label="Rating">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                            <button
-                                key={star}
-                                type="button"
-                                onClick={() => setRating(star)}
-                                className={`p-1 rounded-md transition-colors ${star <= rating ? "text-purple-500" : "text-muted-foreground hover:text-foreground"}`}
-                                aria-label={`Set rating ${star}`}
-                            >
-                                <Star className={`w-4 h-4 ${star <= rating ? "fill-current" : ""}`} />
-                            </button>
-                        ))}
-                    </div>
-                    <Button type="button" size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={handleSave} disabled={saving}>
-                        {saving ? "Saving..." : "Add Entry"}
-                    </Button>
                 </div>
                 <div
                     ref={editorRef}
@@ -112,8 +95,8 @@ export function RichTextEditor({ onSave }: RichTextEditorProps) {
                     suppressContentEditableWarning
                 />
 
-                {/* Tags section */}
-                <div className="mt-3 flex items-start gap-3">
+                {/* Tags and controls section */}
+                <div className="mt-3 flex items-start justify-between gap-3">
                     <div className="flex-1">
                         <div className="mb-2">
                             <Input
@@ -144,6 +127,26 @@ export function RichTextEditor({ onSave }: RichTextEditorProps) {
                                 ))}
                             </div>
                         )}
+                    </div>
+
+                    {/* Rating and Save button */}
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1" aria-label="Rating">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                    key={star}
+                                    type="button"
+                                    onClick={() => setRating(star)}
+                                    className={`p-1 rounded-md transition-colors ${star <= rating ? "text-purple-500" : "text-muted-foreground hover:text-foreground"}`}
+                                    aria-label={`Set rating ${star}`}
+                                >
+                                    <Star className={`w-4 h-4 ${star <= rating ? "fill-current" : ""}`} />
+                                </button>
+                            ))}
+                        </div>
+                        <Button type="button" size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={handleSave} disabled={saving}>
+                            {saving ? "Saving..." : "Add Entry"}
+                        </Button>
                     </div>
                 </div>
             </CardContent>
