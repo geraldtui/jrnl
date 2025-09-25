@@ -3,8 +3,11 @@ const nextConfig = {
   output: 'export',
   trailingSlash: true,
   distDir: 'dist',
-  basePath: '/jrnl',
-  assetPrefix: '/jrnl',
+  // Only use basePath and assetPrefix in production builds
+  ...(process.env.NODE_ENV === 'production' && {
+    basePath: '/jrnl',
+    assetPrefix: '/jrnl',
+  }),
   eslint: {
     ignoreDuringBuilds: true,
   },
