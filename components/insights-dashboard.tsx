@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts"
-import { MessageCircle, Star, Calendar, Target } from "lucide-react"
+import { MessageCircle, Star, Calendar, TrendingUp } from "lucide-react"
 import type { Entry } from "@/app/page"
 
 interface InsightsDashboardProps {
@@ -62,6 +62,42 @@ export function InsightsDashboard({ entries }: InsightsDashboardProps) {
       .slice(0, 10)
       .map(([tag, count]) => ({ tag, count }))
 
+    // Writing patterns and streaks
+    const sortedEntries = entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    const writingDays = new Set(sortedEntries.map(entry => new Date(entry.date).toDateString()))
+    const totalWritingDays = writingDays.size
+
+    // Calculate current streak
+    let currentStreak = 0
+    const today = new Date()
+    for (let i = 0; i < 30; i++) { // Check last 30 days
+      const checkDate = new Date(today)
+      checkDate.setDate(checkDate.getDate() - i)
+      if (writingDays.has(checkDate.toDateString())) {
+        currentStreak++
+      } else {
+        break
+      }
+    }
+
+    // Most productive time (based on hour of day)
+    const hourCounts = entries.reduce((acc, entry) => {
+      const hour = new Date(entry.date).getHours()
+      acc[hour] = (acc[hour] || 0) + 1
+      return acc
+    }, {} as Record<number, number>)
+
+    const mostProductiveHour = Object.entries(hourCounts)
+      .sort(([, a], [, b]) => b - a)[0]?.[0]
+
+    const getTimeOfDay = (hour: number) => {
+      if (hour < 6) return "early morning"
+      if (hour < 12) return "morning"
+      if (hour < 17) return "afternoon"
+      if (hour < 21) return "evening"
+      return "night"
+    }
+
     // Recent improvement areas
     const recentImprovements = entries
       .slice(0, 10)
@@ -75,6 +111,12 @@ export function InsightsDashboard({ entries }: InsightsDashboardProps) {
       monthlyTrends,
       topTags,
       recentImprovements,
+      writingStats: {
+        totalWritingDays,
+        currentStreak,
+        mostProductiveTime: mostProductiveHour ? getTimeOfDay(parseInt(mostProductiveHour)) : null,
+        averagePerDay: totalEntries / Math.max(totalWritingDays, 1)
+      }
     }
   }, [entries])
 
@@ -84,7 +126,7 @@ export function InsightsDashboard({ entries }: InsightsDashboardProps) {
         <div className="text-muted-foreground mb-4">
           <BarChart className="w-12 h-12 mx-auto mb-2 opacity-50" />
           <p>No data to analyze yet</p>
-          <p className="text-sm">Log some conversations to see your insights</p>
+          <p className="text-sm">Write some journal entries to see your insights</p>
         </div>
       </div>
     )
@@ -132,7 +174,7 @@ export function InsightsDashboard({ entries }: InsightsDashboardProps) {
             <div className="text-2xl font-bold text-primary">
               {insights.monthlyTrends[insights.monthlyTrends.length - 1]?.count || 0}
             </div>
-            <p className="text-xs text-muted-foreground">conversations logged</p>
+            <p className="text-xs text-muted-foreground">entries written</p>
           </CardContent>
         </Card>
       </div>
@@ -143,7 +185,7 @@ export function InsightsDashboard({ entries }: InsightsDashboardProps) {
         <Card>
           <CardHeader>
             <CardTitle>Rating Distribution</CardTitle>
-            <CardDescription>How you rate your conversations</CardDescription>
+            <CardDescription>How you rate your journal entries</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
@@ -219,24 +261,37 @@ export function InsightsDashboard({ entries }: InsightsDashboardProps) {
           </CardContent>
         </Card>
 
-        {/* Growth Areas */}
+        {/* Writing Patterns */}
         <Card>
           <CardHeader>
-            <CardTitle>Growth Opportunities</CardTitle>
-            <CardDescription>Recent areas for improvement</CardDescription>
+            <CardTitle>Writing Patterns</CardTitle>
+            <CardDescription>Your journaling habits and streaks</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {insights.recentImprovements.slice(0, 5).map((improvement, index) => (
-                <div key={index} className="flex items-start gap-2">
-                  <Target className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-muted-foreground">{improvement}</p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">Current Streak</span>
                 </div>
-              ))}
-              {insights.recentImprovements.length === 0 && (
-                <p className="text-sm text-muted-foreground italic">
-                  No improvement areas noted recently. Keep reflecting!
-                </p>
+                <span className="text-lg font-bold text-primary">{insights.writingStats.currentStreak} days</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Writing Days</span>
+                <span className="font-medium">{insights.writingStats.totalWritingDays} total</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Average per Day</span>
+                <span className="font-medium">{insights.writingStats.averagePerDay.toFixed(1)} entries</span>
+              </div>
+
+              {insights.writingStats.mostProductiveTime && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Most Active</span>
+                  <span className="font-medium capitalize">{insights.writingStats.mostProductiveTime}</span>
+                </div>
               )}
             </div>
           </CardContent>
