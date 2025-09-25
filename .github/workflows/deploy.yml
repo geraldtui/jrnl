@@ -31,10 +31,35 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Check environment variables
+      run: |
+        if [ -z "${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}" ]; then
+          echo "❌ Error: NEXT_PUBLIC_GOOGLE_CLIENT_ID is not set!"
+          echo "Please add your Google Client ID as a repository secret:"
+          echo "1. Go to Settings > Secrets and variables > Actions"
+          echo "2. Click 'New repository secret'"
+          echo "3. Name: NEXT_PUBLIC_GOOGLE_CLIENT_ID"
+          echo "4. Value: Your Google Client ID"
+          exit 1
+        else
+          echo "✅ NEXT_PUBLIC_GOOGLE_CLIENT_ID is set"
+        fi
+
     - name: Build
       run: npm run build
       env:
         NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+
+    - name: Verify build output
+      run: |
+        echo "🔍 Checking if environment variable was injected into build..."
+        if grep -r "NEXT_PUBLIC_GOOGLE_CLIENT_ID" ./dist/ > /dev/null 2>&1; then
+          echo "✅ Environment variable found in build output"
+        else
+          echo "⚠️  Environment variable not found in build - this may cause loading issues"
+        fi
+        echo "📁 Build output size:"
+        du -sh ./dist/
 
     - name: Setup Pages
       uses: actions/configure-pages@v4
