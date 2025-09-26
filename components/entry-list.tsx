@@ -85,19 +85,15 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
     }
 
     const getEntryTitle = (entry: Entry): string => {
-        const text = getEntryText(entry)
-        if (!text) return "Untitled"
-
-        // Take first 15 characters as title
-        const titleLength = 15
-        return text.slice(0, titleLength).trim()
+        // Use the actual title field if it exists, otherwise fallback to "Untitled"
+        return entry.title?.trim() || "Untitled"
     }
 
     const getEntryExcerpt = (entry: Entry): string => {
-        const text = getEntryText(entry)
+        const text = entry.context?.trim() || ""
         if (!text) return ""
 
-        // For search/excerpt purposes, return a longer snippet of the full text
+        // For search/excerpt purposes, return a longer snippet of the content
         const excerptLength = 280
         if (text.length <= excerptLength) {
             return text.trim()
@@ -114,20 +110,11 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
     }
 
     const getEntryBodyContent = (entry: Entry): string => {
-        const text = getEntryText(entry)
+        const text = entry.context?.trim() || ""
         if (!text) return ""
 
-        const titleLength = 15
-        if (text.length <= titleLength) {
-            // If text is shorter than title length, no body content
-            return ""
-        }
-
-        // Return the remaining content after the first 15 characters, preserving line breaks
-        const bodyText = text.slice(titleLength).trim()
-
-        // Convert line breaks to proper display format
-        return bodyText.replace(/\n/g, '\n')
+        // Return the full content, preserving line breaks
+        return text.replace(/\n/g, '\n')
     }
 
     const handleSave = (entry: Omit<Entry, "id">) => {
@@ -268,11 +255,12 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
         if (!searchTerm.trim()) return true
 
         const term = searchTerm.toLowerCase()
-        const entryText = getEntryText(entry).toLowerCase()
+        const entryTitle = (entry.title || "").toLowerCase()
+        const entryContent = (entry.context || "").toLowerCase()
         const participant = entry.participant.toLowerCase()
 
-        // Check if search term matches in main content or participant
-        return entryText.includes(term) || participant.includes(term)
+        // Check if search term matches in title, content, or participant
+        return entryTitle.includes(term) || entryContent.includes(term) || participant.includes(term)
     }
 
     // Optimized filtering and sorting

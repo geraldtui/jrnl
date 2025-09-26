@@ -17,6 +17,7 @@ interface SimpleTextEditorProps {
 
 export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorProps) {
     const [content, setContent] = useState("")
+    const [title, setTitle] = useState("")
     const [saving, setSaving] = useState(false)
     const [rating, setRating] = useState(0)
     const [hoveredRating, setHoveredRating] = useState(0)
@@ -40,6 +41,7 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
 
     const clearEditor = () => {
         setContent("")
+        setTitle("")
         setRating(0)
         setHoveredRating(0)
         setSelectedTag("")
@@ -80,7 +82,7 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
             }
 
             const entry: Omit<Entry, "id"> = {
-                title: "",
+                title: title.trim(),
                 participant: "You",
                 date: new Date().toISOString(),
                 context: content.trim(),
@@ -147,6 +149,13 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
 
     return (
         <div className="space-y-3">
+            <Input
+                placeholder="Title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                disabled={saving}
+                className="border-0 bg-muted/30 focus:bg-background transition-all hover:ring-1 hover:ring-white/20"
+            />
             <Textarea
                 placeholder=""
                 value={content}
