@@ -22,8 +22,15 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
     const [showCustomInput, setShowCustomInput] = useState(false)
     const [availableTags, setAvailableTags] = useState<string[]>(existingTags)
 
+    // Helper function to capitalize tags
+    const capitalizeTag = (tag: string): string => {
+        return tag.trim().toLowerCase().replace(/\b\w/g, char => char.toUpperCase())
+    }
+
     useEffect(() => {
-        setAvailableTags(existingTags)
+        // Capitalize existing tags when they come in
+        const capitalizedTags = existingTags.map(tag => capitalizeTag(tag))
+        setAvailableTags(capitalizedTags)
     }, [existingTags])
 
     const clearEditor = () => {
@@ -47,7 +54,7 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
             // Determine final tag
             let finalTag = selectedTag
             if (showCustomInput && customTag.trim()) {
-                finalTag = customTag.trim().toLowerCase()
+                finalTag = capitalizeTag(customTag.trim())
                 // Add new tag to available tags for next time
                 if (!availableTags.includes(finalTag)) {
                     setAvailableTags(prev => [...prev, finalTag].sort())
@@ -97,7 +104,7 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
 
     const handleCustomTagSubmit = (e: React.KeyboardEvent) => {
         if (e.key === "Enter" && customTag.trim()) {
-            const newTag = customTag.trim().toLowerCase()
+            const newTag = capitalizeTag(customTag.trim())
             setSelectedTag(newTag)
             if (!availableTags.includes(newTag)) {
                 setAvailableTags(prev => [...prev, newTag].sort())

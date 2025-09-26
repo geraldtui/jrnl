@@ -13,6 +13,11 @@ interface InsightsDashboardProps {
 }
 
 export function InsightsDashboard({ entries }: InsightsDashboardProps) {
+  // Helper function to capitalize tags
+  const capitalizeTag = (tag: string): string => {
+    return tag.trim().toLowerCase().replace(/\b\w/g, char => char.toUpperCase())
+  }
+
   const insights = useMemo(() => {
     if (entries.length === 0) return null
 
@@ -50,7 +55,8 @@ export function InsightsDashboard({ entries }: InsightsDashboardProps) {
     const tagCounts = entries.reduce(
       (acc, entry) => {
         entry.tags.forEach((tag) => {
-          acc[tag] = (acc[tag] || 0) + 1
+          const capitalizedTag = capitalizeTag(tag)
+          acc[capitalizedTag] = (acc[capitalizedTag] || 0) + 1
         })
         return acc
       },

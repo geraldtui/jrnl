@@ -134,12 +134,18 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
         onSave(entry)
     }
 
+    // Helper function to capitalize tags
+    const capitalizeTag = (tag: string): string => {
+        return tag.trim().toLowerCase().replace(/\b\w/g, char => char.toUpperCase())
+    }
+
     // Memoized tag collection for better performance
     const getAllTags = () => {
         const tagCounts = new Map<string, number>()
         baseEntries.forEach(entry => {
             entry.tags.forEach(tag => {
-                tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1)
+                const capitalizedTag = capitalizeTag(tag)
+                tagCounts.set(capitalizedTag, (tagCounts.get(capitalizedTag) || 0) + 1)
             })
         })
         // Return tags sorted alphabetically with their usage counts
@@ -227,7 +233,7 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
                     <div className="flex flex-wrap gap-2">
                         {entry.tags.map((tag) => (
                             <Badge key={tag} variant="outline" className="text-xs">
-                                {tag}
+                                {capitalizeTag(tag)}
                             </Badge>
                         ))}
                     </div>
@@ -275,7 +281,9 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
             .filter((entry) => {
                 const matchesSearch = matchesSearchTerm(entry, searchTerm)
                 const matchesRating = filterRating === "all" || entry.rating.toString() === filterRating
-                const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => entry.tags.includes(tag))
+                const matchesTags = selectedTags.length === 0 || selectedTags.some(tag =>
+                    entry.tags.some(entryTag => capitalizeTag(entryTag) === tag)
+                )
                 return matchesSearch && matchesRating && matchesTags
             })
             .sort((a, b) => {
@@ -368,7 +376,7 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
                                                 )}
                                                 {entry.tags.length > 0 && (
                                                     <Badge variant="outline" className="text-xs px-2 py-0 rounded-full">
-                                                        {entry.tags[0]}
+                                                        {capitalizeTag(entry.tags[0])}
                                                     </Badge>
                                                 )}
                                             </div>

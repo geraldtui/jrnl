@@ -138,8 +138,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Check every 5 minutes
-    const interval = setInterval(checkTokenExpiration, 5 * 60 * 1000)
+    // Check every 30 minutes (since we have 8-hour timeout)
+    const interval = setInterval(checkTokenExpiration, 30 * 60 * 1000)
     return () => clearInterval(interval)
   }, [user, accessToken])
 
@@ -200,8 +200,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('jrnl-user', JSON.stringify(user))
         localStorage.setItem('jrnl-token', response.access_token)
 
-        // Store token expiration time (Google tokens typically expire in 1 hour)
-        const expirationTime = Date.now() + (55 * 60 * 1000) // 55 minutes to be safe
+        // Store token expiration time (extended to 8 hours for better user experience)
+        const expirationTime = Date.now() + (8 * 60 * 60 * 1000) // 8 hours
         localStorage.setItem('jrnl-token-expires', expirationTime.toString())
       } else {
         throw new Error('No access token received')
