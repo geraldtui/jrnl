@@ -5,8 +5,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import type { Entry } from "@/app/page"
 import { Star, Plus } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 interface SimpleTextEditorProps {
     onSave: (entry: Omit<Entry, "id">) => void
@@ -17,10 +19,13 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
     const [content, setContent] = useState("")
     const [saving, setSaving] = useState(false)
     const [rating, setRating] = useState(0)
+    const [hoveredRating, setHoveredRating] = useState(0)
     const [selectedTag, setSelectedTag] = useState<string>("")
     const [customTag, setCustomTag] = useState("")
     const [showCustomInput, setShowCustomInput] = useState(false)
     const [availableTags, setAvailableTags] = useState<string[]>(existingTags)
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+    const { toast } = useToast()
 
     // Helper function to capitalize tags
     const capitalizeTag = (tag: string): string => {
@@ -36,6 +41,7 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
     const clearEditor = () => {
         setContent("")
         setRating(0)
+        setHoveredRating(0)
         setSelectedTag("")
         setCustomTag("")
         setShowCustomInput(false)
@@ -45,8 +51,20 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
         return !content.trim()
     }
 
-    const handleSave = async () => {
-        if (isContentEmpty()) return
+    const isEntryComplete = () => {
+        const hasContent = content.trim().length > 0
+        const hasRating = rating > 0
+        const hasTag = selectedTag.length > 0 || (showCustomInput && customTag.trim().length > 0)
+        return hasContent && hasRating && hasTag
+    }
+
+    const handleSave = () => {
+        if (!isEntryComplete()) return
+        setShowConfirmDialog(true)
+    }
+
+    const confirmAndSave = async () => {
+        if (!isEntryComplete()) return
 
         setSaving(true)
 
@@ -77,8 +95,21 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
 
             await onSave(entry)
             clearEditor()
+            setShowConfirmDialog(false)
+
+            // Show success toast
+            toast({
+                title: "Entry saved!",
+                description: "Your journal entry has been saved successfully.",
+            })
         } catch (error) {
             console.error("Failed to save entry:", error)
+            // Show error toast
+            toast({
+                variant: "destructive",
+                title: "Save failed",
+                description: "There was an error saving your entry. Please try again.",
+            })
         } finally {
             setSaving(false)
         }
@@ -144,7 +175,7 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
                 ) : (
                     <Select value={selectedTag} onValueChange={handleTagSelect} disabled={saving}>
                         <SelectTrigger className="w-24 h-8 text-sm border-0 bg-muted/30">
-                            <SelectValue placeholder="tag" />
+                            <SelectValue placeholder="tag*" />
                         </SelectTrigger>
                         <SelectContent>
                             {availableTags.map((tag) => (
@@ -164,28 +195,55 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
                 )}
 
                 <div className="flex items-center gap-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                        <button
-                            key={i}
-                            onClick={() => setRating(rating === i + 1 ? 0 : i + 1)}
-                            className={`p-1 rounded transition-colors ${
-                                i < rating ? "text-yellow-500" : "text-transparent hover:text-white"
-                            }`}
-                            disabled={saving}
-                        >
-                            <Star className="w-4 h-4 fill-current stroke-white/30 stroke-1" />
-                        </button>
-                    ))}
+                    {Array.from({ length: 5 }).map((_, i) => {
+                        const starIndex = i + 1
+                        const isHighlighted = starIndex <= (hoveredRating || rating)
+                        const isHoverable = hoveredRating === 0 && starIndex > rating
+
+                        return (
+                            <button
+                                key={i}
+                                onClick={() => setRating(rating === starIndex ? 0 : starIndex)}
+                                onMouseEnter={() => setHoveredRating(starIndex)}
+                                onMouseLeave={() => setHoveredRating(0)}
+                                className={`p-1 rounded transition-colors ${
+                                    isHighlighted
+                                        ? "text-purple-500"
+                                        : "text-transparent hover:text-white"
+                                }`}
+                                disabled={saving}
+                            >
+                                <Star className="w-4 h-4 fill-current stroke-white/30 stroke-1" />
+                            </button>
+                        )
+                    })}
                 </div>
 
-                <Button
-                    onClick={handleSave}
-                    disabled={isContentEmpty() || saving}
-                    size="sm"
-                    className="px-4"
-                >
-                    {saving ? "..." : "jrnl"}
-                </Button>
+                <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                    <AlertDialogTrigger asChild>
+                        <Button
+                            disabled={!isEntryComplete() || saving}
+                            size="sm"
+                            className="px-4"
+                        >
+                            {saving ? "..." : "jrnl"}
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Submit Journal Entry?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Once submitted, this entry cannot be edited or changed. Make sure your content, rating, and tag are correct before proceeding.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Review</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmAndSave}>
+                                Submit Entry
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </div>
     )
