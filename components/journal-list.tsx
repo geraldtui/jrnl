@@ -31,35 +31,6 @@ export function EntryList({ entries, onSave }: EntryListProps) {
   // Editor is always visible on top; no toggle needed
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
 
-  const defaultEntries: Entry[] = [
-    {
-      id: "demo-1",
-      title: "My cat discovered the printer today",
-      participant: "",
-      date: "2025-01-14T00:00:00.000Z",
-      context:
-        "Whiskers somehow figured out how to turn on the printer and has been fascinated by the paper coming out. She's been batting at every page for the last hour.",
-      rating: 5,
-      reflection: { didWell: "", couldImprove: "", learned: "" },
-      tags: ["pets", "funny"],
-      contentHtml:
-        "<p>Whiskers somehow figured out how to turn on the printer and has been fascinated by the paper coming out. She's been batting at every page for the last hour.</p><p>I tried to print my tax documents and ended up with 20 pages of paw prints instead. <strong>Worth it</strong> for the entertainment value though!</p>",
-    },
-    {
-      id: "demo-2",
-      title: "Finally tried that weird coffee shop downtown",
-      participant: "",
-      date: "2025-01-15T00:00:00.000Z",
-      context:
-        "The one with the neon pink exterior that I've walked past a hundred times. Turns out they serve coffee in actual teacups and the barista knows everyone's name.",
-      rating: 4,
-      reflection: { didWell: "", couldImprove: "", learned: "" },
-      tags: ["coffee", "local"],
-      contentHtml:
-        "<p>The one with the neon pink exterior that I've walked past a hundred times. Turns out they serve coffee in actual teacups and the barista knows everyone's name.</p><p>Their <em>lavender oat milk latte</em> was surprisingly good, and I spent two hours there without realizing it. Sometimes the weird places are exactly what you need.</p>",
-    },
-  ]
-
   useEffect(() => {
     try {
       const raw = localStorage.getItem("jrnl-deleted-ids")
@@ -110,8 +81,7 @@ export function EntryList({ entries, onSave }: EntryListProps) {
   }
 
   const baseEntries = entries.filter((conv) => !deletedIds.has(conv.id))
-  const sourceEntries = baseEntries.length === 0 ? defaultEntries : baseEntries
-  const filteredAndSorted = sourceEntries
+  const filteredAndSorted = baseEntries
     .filter((conv) => {
       const matchesSearch =
         conv.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
