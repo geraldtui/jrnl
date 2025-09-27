@@ -88,3 +88,6 @@ Desktop.ini
 # Prisma (if used)
 prisma/*.db
 prisma/*.db-journal
+
+# Test
+test*

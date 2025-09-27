@@ -318,29 +318,18 @@ export class GoogleDriveService {
       // TEMPORARILY DISABLED: await this.migrateLegacyFile(folderId)
       console.log('⚠️  Legacy migration temporarily disabled for testing')
 
-      // Load recent months (last 12 months for stress testing) by default
+      // Load only current month by default for fastest loading
       const now = new Date()
-      const recentMonths: string[] = []
+      const currentMonthKey = this.getMonthKey(now.toISOString())
 
-      for (let i = 0; i < 12; i++) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-        recentMonths.push(this.getMonthKey(date.toISOString()))
-      }
+      console.log(`🔍 Loading entries from current month: ${currentMonthKey}`)
 
-      const allEntries: Entry[] = []
-
-      console.log('🔍 Loading entries from months:', recentMonths)
-
-      for (const monthKey of recentMonths) {
-        const monthEntries = await this.loadEntriesForMonth(monthKey)
-        console.log(`📅 ${monthKey}: loaded ${monthEntries.length} entries`)
-        allEntries.push(...monthEntries)
-      }
-
-      console.log(`📊 Total entries loaded: ${allEntries.length}`)
+      const monthEntries = await this.loadEntriesForMonth(currentMonthKey)
+      console.log(`📅 ${currentMonthKey}: loaded ${monthEntries.length} entries`)
+      console.log(`📊 Total entries loaded: ${monthEntries.length}`)
 
       // Sort by date (newest first)
-      return allEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      return monthEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     } catch (error) {
       console.error('Error loading entries from Google Drive:', error)
       throw new Error('Failed to load entries from Google Drive')
@@ -351,15 +340,12 @@ export class GoogleDriveService {
     try {
       const folderId = await this.findOrCreateFolder()
       const files = await this.findJournalFiles(folderId, monthKey)
-      console.log(`🔍 Looking for entries-${monthKey}.json, found files:`, files.map(f => f.name))
       const targetFile = files.find(f => f.name === `entries-${monthKey}.json`)
 
       if (!targetFile) {
-        console.log(`❌ No file found for month ${monthKey}`)
+        console.log(`📭 No entries found for ${monthKey}`)
         return [] // No entries for this month
       }
-
-      console.log(`✅ Found file for ${monthKey}: ${targetFile.name}`)
 
       const response = await fetch(
         `https://www.googleapis.com/drive/v3/files/${targetFile.id}?alt=media`,
@@ -377,7 +363,6 @@ export class GoogleDriveService {
 
       const content = await response.text()
       const entries = JSON.parse(content) as Entry[]
-      console.log(`✅ Parsed ${entries.length} entries from ${targetFile.name}`)
       return entries
     } catch (error) {
       console.error(`Error loading entries for month ${monthKey}:`, error)
