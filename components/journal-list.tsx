@@ -20,12 +20,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-interface ConversationListProps {
+interface EntryListProps {
   entries: Entry[]
   onSave: (entry: Omit<Entry, "id">) => void
 }
 
-export function ConversationList({ entries, onSave }: ConversationListProps) {
+export function EntryList({ entries, onSave }: EntryListProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState<"date" | "rating" | "title">("date")
   const [filterRating, setFilterRating] = useState<string>("all")
@@ -182,46 +182,46 @@ export function ConversationList({ entries, onSave }: ConversationListProps) {
           <RichTextEditor onSave={handleSave} />
         </div>
 
-        {filteredAndSorted.map((conversation) => (
+        {filteredAndSorted.map((entry) => (
           <Card
-            key={conversation.id}
+            key={entry.id}
             className="hover:bg-muted/30 border-0 shadow-sm transition-all duration-200"
           >
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-medium">{conversation.title}</h3>
-                    {conversation.rating > 0 && (
+                    <h3 className="font-medium">{entry.title}</h3>
+                    {entry.rating > 0 && (
                       <Badge variant="secondary" className="text-xs px-2 py-0 rounded-full">
-                        {conversation.rating}★
+                        {entry.rating}★
                       </Badge>
                     )}
-                    {conversation.tags.length > 0 && (
+                    {entry.tags.length > 0 && (
                       <Badge variant="outline" className="text-xs px-2 py-0 rounded-full">
-                        {conversation.tags[0]}
+                        {entry.tags[0]}
                       </Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
-                      {conversation.date.split('T')[0]}
+                      {entry.date.split('T')[0]}
                     </div>
-                    {conversation.rating > 0 && (
+                    {entry.rating > 0 && (
                       <div className="flex items-center gap-1">
-                        {Array.from({ length: conversation.rating }).map((_, i) => (
+                        {Array.from({ length: entry.rating }).map((_, i) => (
                           <Star key={i} className="w-3 h-3 text-primary fill-current" />
                         ))}
                       </div>
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground line-clamp-3 break-words">
-                    {getEntryExcerpt(conversation)}
+                    {getEntryExcerpt(entry)}
                   </p>
                 </div>
                 <div className="ml-3">
-                  {conversation.id.startsWith("demo-") ? (
+                  {entry.id.startsWith("demo-") ? (
                     <div className="p-2 opacity-50" aria-hidden>
                       <Trash2 className="w-4 h-4" />
                     </div>
@@ -245,7 +245,7 @@ export function ConversationList({ entries, onSave }: ConversationListProps) {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteEntry(conversation.id)}>Delete</AlertDialogAction>
+                          <AlertDialogAction onClick={() => deleteEntry(entry.id)}>Delete</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>

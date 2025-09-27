@@ -25,9 +25,6 @@ export interface Entry {
   contentHtml?: string
 }
 
-// Backwards-compatible alias for components that may still import Conversation
-export type Conversation = Entry
-
 export default function HomePage() {
   const { isAuthenticated, user, loading, signIn, signOut, saveEntries, loadEntries, deleteAllData } = useAuth()
   const [entries, setEntries] = useState<Entry[]>([])
