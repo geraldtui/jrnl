@@ -7,18 +7,25 @@ import { Progress } from "@/components/ui/progress"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts"
 import { MessageCircle, Star, Calendar, TrendingUp } from "lucide-react"
 import type { Entry } from "@/app/page"
+import type { InsightsData } from "@/lib/google-drive"
 
 interface InsightsDashboardProps {
   entries: Entry[]
+  precomputedInsights?: InsightsData | null
 }
 
-export function InsightsDashboard({ entries }: InsightsDashboardProps) {
+export function InsightsDashboard({ entries, precomputedInsights }: InsightsDashboardProps) {
   // Helper function to capitalize tags
   const capitalizeTag = (tag: string): string => {
     return tag.trim().toLowerCase().replace(/\b\w/g, char => char.toUpperCase())
   }
 
   const insights = useMemo(() => {
+    // Use precomputed insights if available, otherwise calculate from entries
+    if (precomputedInsights) {
+      return precomputedInsights
+    }
+
     if (entries.length === 0) return null
 
     const totalEntries = entries.length
@@ -111,12 +118,17 @@ export function InsightsDashboard({ entries }: InsightsDashboardProps) {
       .map((entry) => entry.reflection.couldImprove)
 
     return {
+      lastUpdated: new Date().toISOString(),
       totalEntries,
       averageRating,
       ratingDistribution,
       monthlyTrends,
-      topTags,
+      tagCounts: topTags,
+      writingStreak: currentStreak,
+      mostProductiveHour: mostProductiveHour ? parseInt(mostProductiveHour) : 12,
       recentImprovements,
+      // Additional properties for component compatibility
+      topTags,
       writingStats: {
         totalWritingDays,
         currentStreak,
@@ -124,7 +136,7 @@ export function InsightsDashboard({ entries }: InsightsDashboardProps) {
         averagePerDay: totalEntries / Math.max(totalWritingDays, 1)
       }
     }
-  }, [entries])
+  }, [entries, precomputedInsights])
 
   if (!insights) {
     return (
@@ -254,7 +266,7 @@ export function InsightsDashboard({ entries }: InsightsDashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {insights.topTags.slice(0, 8).map(({ tag, count }) => (
+              {(insights.topTags || insights.tagCounts)?.slice(0, 8).map(({ tag, count }) => (
                 <div key={tag} className="flex items-center justify-between">
                   <Badge variant="outline">{tag}</Badge>
                   <div className="flex items-center gap-2 flex-1 ml-3">
@@ -280,20 +292,20 @@ export function InsightsDashboard({ entries }: InsightsDashboardProps) {
                   <TrendingUp className="w-4 h-4 text-primary" />
                   <span className="text-sm font-medium">Current Streak</span>
                 </div>
-                <span className="text-lg font-bold text-primary">{insights.writingStats.currentStreak} days</span>
+                <span className="text-lg font-bold text-primary">{insights.writingStats?.currentStreak || insights.writingStreak} days</span>
               </div>
 
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Writing Days</span>
-                <span className="font-medium">{insights.writingStats.totalWritingDays} total</span>
+                <span className="font-medium">{insights.writingStats?.totalWritingDays || 'N/A'} total</span>
               </div>
 
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Average per Day</span>
-                <span className="font-medium">{insights.writingStats.averagePerDay.toFixed(1)} entries</span>
+                <span className="font-medium">{insights.writingStats?.averagePerDay?.toFixed(1) || 'N/A'} entries</span>
               </div>
 
-              {insights.writingStats.mostProductiveTime && (
+              {insights.writingStats?.mostProductiveTime && (
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Most Active</span>
                   <span className="font-medium capitalize">{insights.writingStats.mostProductiveTime}</span>

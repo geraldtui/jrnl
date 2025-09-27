@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { GoogleDriveService } from '@/lib/google-drive'
+import { GoogleDriveService, type InsightsData } from '@/lib/google-drive'
 import type { Entry } from '@/app/page'
 
 interface User {
@@ -20,6 +20,7 @@ interface AuthContextType {
   signOut: () => void
   saveEntries: (entries: Entry[]) => Promise<void>
   loadEntries: () => Promise<Entry[]>
+  loadInsights: () => Promise<InsightsData | null>
   deleteAllData: () => Promise<void>
 }
 
@@ -247,6 +248,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await driveService.deleteAllData()
   }
 
+  const loadInsights = async (): Promise<InsightsData | null> => {
+    if (!driveService) {
+      throw new Error('Not authenticated with Google Drive')
+    }
+    return await driveService.loadInsights()
+  }
+
   const value: AuthContextType = {
     isAuthenticated: !!user && !!accessToken,
     user,
@@ -256,6 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut: handleSignOut,
     saveEntries,
     loadEntries,
+    loadInsights,
     deleteAllData,
   }
 

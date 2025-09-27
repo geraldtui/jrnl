@@ -8,6 +8,7 @@ import { InsightsDashboard } from "@/components/insights-dashboard"
 import { UserSidebar } from "@/components/user-sidebar"
 import { useAuth } from "@/contexts/auth-context"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import type { InsightsData } from "@/lib/google-drive"
 
 export interface Entry {
   id: string
@@ -26,8 +27,9 @@ export interface Entry {
 }
 
 export default function HomePage() {
-  const { isAuthenticated, user, loading, signIn, signOut, saveEntries, loadEntries, deleteAllData } = useAuth()
+  const { isAuthenticated, user, loading, signIn, signOut, saveEntries, loadEntries, loadInsights, deleteAllData } = useAuth()
   const [entries, setEntries] = useState<Entry[]>([])
+  const [insights, setInsights] = useState<InsightsData | null>(null)
   const [activeTab, setActiveTab] = useState<"home" | "insights">("home")
   const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,6 +46,10 @@ export default function HomePage() {
       try {
         const driveEntries = await loadEntries()
         setEntries(driveEntries)
+
+        // Load precomputed insights
+        const driveInsights = await loadInsights()
+        setInsights(driveInsights)
       } catch (err) {
         console.error('Error loading entries:', err)
         setError(err instanceof Error ? err.message : 'Failed to load entries')
@@ -110,6 +116,7 @@ export default function HomePage() {
       setIsLoading(true)
       await deleteAllData()
       setEntries([])
+      setInsights(null)
       setError(null)
     } catch (err) {
       console.error('Error deleting data:', err)
@@ -127,6 +134,10 @@ export default function HomePage() {
       setError(null)
       const driveEntries = await loadEntries()
       setEntries(driveEntries)
+
+      // Refresh insights as well
+      const driveInsights = await loadInsights()
+      setInsights(driveInsights)
     } catch (err) {
       console.error('Error refreshing data:', err)
       setError(err instanceof Error ? err.message : 'Failed to refresh data')
@@ -271,7 +282,7 @@ export default function HomePage() {
           />
         )}
 
-        {activeTab === "insights" && <InsightsDashboard entries={entries} />}
+        {activeTab === "insights" && <InsightsDashboard entries={entries} precomputedInsights={insights} />}
       </div>
     </div>
   )
