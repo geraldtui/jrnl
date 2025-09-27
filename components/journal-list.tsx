@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Star, Calendar, Search, Trash2 } from "lucide-react"
-import { RichTextEditor } from "@/components/rich-text-editor"
 import type { Entry } from "@/app/page"
 import {
   AlertDialog,
@@ -178,10 +177,6 @@ export function EntryList({ entries, onSave }: EntryListProps) {
       </div>
 
       <div className="space-y-3">
-        <div className="animate-in fade-in-5 slide-in-from-top-20 duration-700 ease-out">
-          <RichTextEditor onSave={handleSave} />
-        </div>
-
         {filteredAndSorted.map((entry) => (
           <Card
             key={entry.id}
