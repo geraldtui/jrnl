@@ -457,7 +457,7 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
                                 </CardContent>
                             </Card>
                         </DialogTrigger>
-                        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+                        <DialogContent className="w-full !max-w-screen-lg max-h-[80vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-800/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-gray-700/60">
                             <DialogHeader>
                             </DialogHeader>
                             {renderFullEntry(entry)}
