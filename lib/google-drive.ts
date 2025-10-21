@@ -114,15 +114,9 @@ export class GoogleDriveService {
     return response.json()
   }
 
-  private async findOrCreateFolder(): Promise<string> {
+  private async findFolder(): Promise<string | null> {
     try {
       // Search for existing folder
-      const response = await this.makeRequest({
-        path: '/files',
-        method: 'GET',
-        headers: {},
-      })
-
       const searchParams = new URLSearchParams({
         q: `name='${this.folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
         fields: 'files(id, name)',
@@ -143,6 +137,21 @@ export class GoogleDriveService {
         return searchData.files[0].id
       }
 
+      return null // No folder found
+    } catch (error) {
+      console.error('Error finding folder:', error)
+      return null
+    }
+  }
+
+  private async findOrCreateFolder(): Promise<string> {
+    try {
+      // First try to find existing folder
+      const existingFolderId = await this.findFolder()
+      if (existingFolderId) {
+        return existingFolderId
+      }
+
       // Create folder if it doesn't exist
       const createResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
         method: 'POST',
@@ -155,6 +164,10 @@ export class GoogleDriveService {
           mimeType: 'application/vnd.google-apps.folder',
         }),
       })
+
+      if (!createResponse.ok) {
+        throw new Error(`Failed to create folder: ${createResponse.status}`)
+      }
 
       const createData = await createResponse.json()
       return createData.id
@@ -312,7 +325,13 @@ export class GoogleDriveService {
 
   async loadEntries(): Promise<Entry[]> {
     try {
-      const folderId = await this.findOrCreateFolder()
+      const folderId = await this.findFolder()
+
+      // If no folder exists, return empty array (don't create folder just for loading)
+      if (!folderId) {
+        console.log('📭 No jrnl folder found, returning empty entries')
+        return []
+      }
 
       // Check for legacy file first and migrate if needed
       // TEMPORARILY DISABLED: await this.migrateLegacyFile(folderId)
@@ -338,7 +357,14 @@ export class GoogleDriveService {
 
   async loadEntriesForMonth(monthKey: string): Promise<Entry[]> {
     try {
-      const folderId = await this.findOrCreateFolder()
+      const folderId = await this.findFolder()
+
+      // If no folder exists, return empty array
+      if (!folderId) {
+        console.log(`📭 No jrnl folder found for ${monthKey}`)
+        return []
+      }
+
       const files = await this.findJournalFiles(folderId, monthKey)
       const targetFile = files.find(f => f.name === `entries-${monthKey}.json`)
 
@@ -372,7 +398,14 @@ export class GoogleDriveService {
 
   async getAvailableMonths(): Promise<string[]> {
     try {
-      const folderId = await this.findOrCreateFolder()
+      const folderId = await this.findFolder()
+
+      // If no folder exists, return empty array
+      if (!folderId) {
+        console.log('📭 No jrnl folder found for available months')
+        return []
+      }
+
       const files = await this.findJournalFiles(folderId)
 
       const months = files
@@ -472,7 +505,14 @@ export class GoogleDriveService {
 
   async loadInsights(): Promise<InsightsData | null> {
     try {
-      const folderId = await this.findOrCreateFolder()
+      const folderId = await this.findFolder()
+
+      // If no folder exists, return null
+      if (!folderId) {
+        console.log('📭 No jrnl folder found for insights')
+        return null
+      }
+
       const fileId = await this.findInsightsFile(folderId)
 
       if (!fileId) {
@@ -613,7 +653,13 @@ export class GoogleDriveService {
 
   async deleteAllData(): Promise<void> {
     try {
-      const folderId = await this.findOrCreateFolder()
+      const folderId = await this.findFolder()
+
+      // If no folder exists, there's nothing to delete
+      if (!folderId) {
+        console.log('📭 No jrnl folder found, nothing to delete')
+        return
+      }
 
       // Delete all monthly entry files
       const monthlyFiles = await this.findJournalFiles(folderId)

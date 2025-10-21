@@ -244,35 +244,6 @@ export default function HomePage() {
           </Alert>
         )}
 
-        <div className="flex justify-center mb-8">
-          <div className="flex bg-muted/30 rounded-full p-1">
-            <Button
-              variant={activeTab === "home" && !showForm ? "default" : "ghost"}
-              size="sm"
-              onClick={() => {
-                setActiveTab("home")
-                setShowForm(false)
-              }}
-              className="rounded-full px-6"
-            >
-              <Home className="w-4 h-4 mr-2" />
-              Home
-            </Button>
-            <Button
-              variant={activeTab === "insights" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => {
-                setActiveTab("insights")
-                setShowForm(false)
-              }}
-              className="rounded-full px-6"
-            >
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Insights
-            </Button>
-          </div>
-        </div>
-
         {activeTab === "home" && (
           <EntryList
             entries={entries}

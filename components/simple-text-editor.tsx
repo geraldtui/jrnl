@@ -184,7 +184,7 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
                 ) : (
                     <Select value={selectedTag} onValueChange={handleTagSelect} disabled={saving}>
                         <SelectTrigger className="w-24 h-8 text-sm border-0 bg-muted/30">
-                            <SelectValue placeholder="tag*" />
+                            <SelectValue placeholder="Tag" />
                         </SelectTrigger>
                         <SelectContent>
                             {availableTags.map((tag) => (
