@@ -15,13 +15,8 @@ export interface Entry {
   title: string
   participant: string
   date: string
-  context: string
+  content: string
   rating: number
-  reflection: {
-    didWell: string
-    couldImprove: string
-    learned: string
-  }
   tags: string[]
   contentHtml?: string
 }

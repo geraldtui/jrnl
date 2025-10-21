@@ -71,7 +71,7 @@ export function EntryList({ entries, onSave }: EntryListProps) {
       return decoded.replace(/\s+/g, " ").trim()
     }
 
-    const text = entry.contentHtml ? fromHtml(entry.contentHtml) : (entry.context || "")
+    const text = entry.contentHtml ? fromHtml(entry.contentHtml) : (entry.content || "")
     if (!text) return ""
 
     const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text]
@@ -86,7 +86,7 @@ export function EntryList({ entries, onSave }: EntryListProps) {
       const matchesSearch =
         conv.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         conv.participant.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        conv.context.toLowerCase().includes(searchTerm.toLowerCase())
+        conv.content.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesRating = filterRating === "all" || conv.rating.toString() === filterRating
       return matchesSearch && matchesRating
     })

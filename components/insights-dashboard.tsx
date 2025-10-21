@@ -111,11 +111,8 @@ export function InsightsDashboard({ entries, precomputedInsights }: InsightsDash
       return "night"
     }
 
-    // Recent improvement areas
-    const recentImprovements = entries
-      .slice(0, 10)
-      .filter((entry) => entry.reflection.couldImprove)
-      .map((entry) => entry.reflection.couldImprove)
+    // Recent improvement areas - removed as reflection field no longer exists
+    const recentImprovements: string[] = []
 
     return {
       lastUpdated: new Date().toISOString(),

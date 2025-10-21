@@ -631,12 +631,8 @@ export class GoogleDriveService {
       ? parseInt(Object.entries(hourCounts).sort(([, a], [, b]) => b - a)[0][0])
       : 12
 
-    // Recent improvement areas
-    const recentImprovements = entries
-      .slice(0, 10)
-      .filter((entry) => entry.reflection.couldImprove)
-      .map((entry) => entry.reflection.couldImprove)
-      .slice(0, 5)
+    // Recent improvement areas - removed as reflection field no longer exists
+    const recentImprovements: string[] = []
 
     return {
       lastUpdated: new Date().toISOString(),

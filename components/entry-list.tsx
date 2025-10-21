@@ -38,6 +38,7 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
     const [searchTerm, setSearchTerm] = useState("")
     const [filterRating, setFilterRating] = useState<string>("all")
     const [selectedTags, setSelectedTags] = useState<string[]>([])
+    const [dateFilter, setDateFilter] = useState<string>("pastWeek")
     // Editor is always visible on top; no toggle needed
     const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
     const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null)
@@ -81,7 +82,7 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
 
     // Get the raw text content from entry (plaintext only now)
     const getEntryText = (entry: Entry): string => {
-        return (entry.context || entry.title || "").trim()
+        return (entry.content || entry.title || "").trim()
     }
 
     const getEntryTitle = (entry: Entry): string => {
@@ -90,7 +91,7 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
     }
 
     const getEntryExcerpt = (entry: Entry): string => {
-        const text = entry.context?.trim() || ""
+        const text = entry.content?.trim() || ""
         if (!text) return ""
 
         // For search/excerpt purposes, return a longer snippet of the content
@@ -110,7 +111,7 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
     }
 
     const getEntryBodyContent = (entry: Entry): string => {
-        const text = entry.context?.trim() || ""
+        const text = entry.content?.trim() || ""
         if (!text) return ""
 
         // Return the full content, preserving line breaks
@@ -251,19 +252,48 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
     }
 
     // Optimized search function
-    const matchesSearchTerm = (entry: Entry, searchTerm: string): boolean => {
-        if (!searchTerm.trim()) return true
+    const matchesSearchTerm = (entry: Entry, term: string): boolean => {
+        if (!term) return true
 
-        const term = searchTerm.toLowerCase()
-        const entryTitle = (entry.title || "").toLowerCase()
-        const entryContent = (entry.context || "").toLowerCase()
+        const lowerTerm = term.toLowerCase()
+        const entryTitle = getEntryTitle(entry).toLowerCase()
+        const entryContent = getEntryText(entry).toLowerCase()
         const participant = entry.participant.toLowerCase()
 
         // Check if search term matches in title, content, or participant
         return entryTitle.includes(term) || entryContent.includes(term) || participant.includes(term)
     }
 
-    // Optimized filtering and sorting
+    const matchesDateFilter = (entry: Entry, filter: string): boolean => {
+        if (filter === "all") return true
+
+        const entryDate = new Date(entry.date)
+        const now = new Date()
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+        switch (filter) {
+            case "today":
+                const entryToday = new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate())
+                return entryToday.getTime() === today.getTime()
+
+            case "pastWeek":
+                const weekAgo = new Date(today)
+                weekAgo.setDate(weekAgo.getDate() - 7)
+                return entryDate >= weekAgo
+
+            case "pastMonth":
+                const monthAgo = new Date(today)
+                monthAgo.setMonth(monthAgo.getMonth() - 1)
+                return entryDate >= monthAgo
+
+            case "custom":
+                // For now, custom behaves like "all" - can be extended later
+                return true
+
+            default:
+                return true
+        }
+    }    // Optimized filtering and sorting
     const getFilteredEntries = () => {
         return baseEntries
             .filter((entry) => {
@@ -272,7 +302,8 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
                 const matchesTags = selectedTags.length === 0 || selectedTags.some(tag =>
                     entry.tags.some(entryTag => capitalizeTag(entryTag) === tag)
                 )
-                return matchesSearch && matchesRating && matchesTags
+                const matchesDate = matchesDateFilter(entry, dateFilter)
+                return matchesSearch && matchesRating && matchesTags && matchesDate
             })
             .sort((a, b) => {
                 // Always sort by date (newest first)
@@ -299,6 +330,18 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
                         className="pl-10 border-0 bg-muted/30"
                     />
                 </div>
+                <Select value={dateFilter} onValueChange={setDateFilter}>
+                    <SelectTrigger className="w-full sm:w-36 border-0 bg-muted/30">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="pastWeek">Past Week</SelectItem>
+                        <SelectItem value="pastMonth">Past Month</SelectItem>
+                        <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                </Select>
                 <Select value="" onValueChange={toggleTag}>
                     <SelectTrigger className="w-full sm:w-40 border-0 bg-muted/30">
                         <SelectValue placeholder={selectedTags.length > 0 ? `${selectedTags.length} tag${selectedTags.length > 1 ? 's' : ''} selected` : "Filter by tags"} />
@@ -414,9 +457,8 @@ export function EntryList({ entries, onSave, onDelete, isLoading }: EntryListPro
                                 </CardContent>
                             </Card>
                         </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
-                                <DialogTitle>Journal Entry</DialogTitle>
                             </DialogHeader>
                             {renderFullEntry(entry)}
                         </DialogContent>

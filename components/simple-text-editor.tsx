@@ -85,13 +85,8 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
                 title: title.trim(),
                 participant: "You",
                 date: new Date().toISOString(),
-                context: content.trim(),
+                content: content.trim(),
                 rating,
-                reflection: {
-                    didWell: "",
-                    couldImprove: "",
-                    learned: ""
-                },
                 tags: finalTag ? [finalTag] : [],
             }
 
@@ -235,7 +230,7 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
                             size="sm"
                             className="px-4"
                         >
-                            {saving ? "..." : "jrnl"}
+                            {saving ? "..." : "save"}
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
