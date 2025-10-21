@@ -145,14 +145,14 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
     return (
         <div className="space-y-3">
             <Input
-                placeholder="Title"
+                placeholder="Entry Title..."
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={saving}
                 className="border-0 bg-muted/30 focus:bg-background transition-all hover:ring-1 hover:ring-white/20"
             />
             <Textarea
-                placeholder=""
+                placeholder="Start writing your jrnl entry..."
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -230,7 +230,7 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
                             size="sm"
                             className="px-4"
                         >
-                            {saving ? "..." : "save"}
+                            {saving ? "..." : "Save"}
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -243,7 +243,7 @@ export function RichTextEditor({ onSave, existingTags = [] }: SimpleTextEditorPr
                         <AlertDialogFooter>
                             <AlertDialogCancel>Review</AlertDialogCancel>
                             <AlertDialogAction onClick={confirmAndSave}>
-                                Submit Entry
+                                Save Entry
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
