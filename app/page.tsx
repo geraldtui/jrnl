@@ -2,13 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Home, BarChart3, RefreshCw } from "lucide-react"
+import { Home, RefreshCw } from "lucide-react"
 import { EntryList } from "@/components/entry-list"
-import { InsightsDashboard } from "@/components/insights-dashboard"
 import { UserSidebar } from "@/components/user-sidebar"
 import { useAuth } from "@/contexts/auth-context"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import type { InsightsData } from "@/lib/google-drive"
 
 export interface Entry {
   id: string
@@ -22,10 +20,8 @@ export interface Entry {
 }
 
 export default function HomePage() {
-  const { isAuthenticated, user, loading, signIn, signOut, saveEntries, loadEntries, loadInsights, deleteAllData } = useAuth()
+  const { isAuthenticated, user, loading, signIn, signOut, saveEntries, loadEntries, deleteAllData } = useAuth()
   const [entries, setEntries] = useState<Entry[]>([])
-  const [insights, setInsights] = useState<InsightsData | null>(null)
-  const [activeTab, setActiveTab] = useState<"home" | "insights">("home")
   const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -41,10 +37,6 @@ export default function HomePage() {
       try {
         const driveEntries = await loadEntries()
         setEntries(driveEntries)
-
-        // Load precomputed insights
-        const driveInsights = await loadInsights()
-        setInsights(driveInsights)
       } catch (err) {
         console.error('Error loading entries:', err)
         setError(err instanceof Error ? err.message : 'Failed to load entries')
@@ -73,16 +65,7 @@ export default function HomePage() {
     loadEntriesFromDrive()
   }, [isAuthenticated, loadEntries, saveEntries])
 
-  // Auto-refresh data every 5 minutes when on insights tab (to catch changes from other devices)
-  useEffect(() => {
-    if (!isAuthenticated || activeTab !== 'insights') return
 
-    const interval = setInterval(() => {
-      refreshData()
-    }, 5 * 60 * 1000) // 5 minutes
-
-    return () => clearInterval(interval)
-  }, [isAuthenticated, activeTab])
 
   const saveEntry = async (entry: Omit<Entry, "id">) => {
     const newEntry: Entry = {
@@ -111,7 +94,6 @@ export default function HomePage() {
       setIsLoading(true)
       await deleteAllData()
       setEntries([])
-      setInsights(null)
       setError(null)
     } catch (err) {
       console.error('Error deleting data:', err)
@@ -129,10 +111,6 @@ export default function HomePage() {
       setError(null)
       const driveEntries = await loadEntries()
       setEntries(driveEntries)
-
-      // Refresh insights as well
-      const driveInsights = await loadInsights()
-      setInsights(driveInsights)
     } catch (err) {
       console.error('Error refreshing data:', err)
       setError(err instanceof Error ? err.message : 'Failed to refresh data')
@@ -239,16 +217,12 @@ export default function HomePage() {
           </Alert>
         )}
 
-        {activeTab === "home" && (
-          <EntryList
-            entries={entries}
-            onSave={saveEntry}
-            onDelete={deleteEntry}
-            isLoading={isLoading}
-          />
-        )}
-
-        {activeTab === "insights" && <InsightsDashboard entries={entries} precomputedInsights={insights} />}
+        <EntryList
+          entries={entries}
+          onSave={saveEntry}
+          onDelete={deleteEntry}
+          isLoading={isLoading}
+        />
       </div>
     </div>
   )
